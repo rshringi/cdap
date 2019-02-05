@@ -379,7 +379,7 @@ features:
         toggle:
           clearAll: Clear All
           selectAll: Select All
-      directivesTabLabel: Directives ({directivesCount})
+      directivesTabLabel: Transformation steps ({directivesCount})
       DirectivesTab:
         label: Directives
       noColumns: No columns
