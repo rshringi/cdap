@@ -796,69 +796,6 @@ public class DefaultStore implements Store {
   }
 
   /**
-   * Method to add old run count info
-   *
-   * @param maxRows max batch size to fetch
-   */
-  public void upgrade(int maxRows) {
-    // If upgrade is already complete, then simply return.
-    if (isUpgradeComplete()) {
-      LOG.debug("Run count is already upgraded.");
-      return;
-    }
-
-    TransactionRunners.run(transactionRunner, context -> {
-      AppMetadataStore store = getAppMetadataStore(context);
-
-      // create the start time if not exist, any run record older than this time will need to be counted
-      store.writeUpgradeStartTimeIfNotExist();
-    });
-
-    LOG.info("Upgrading active run records with batch size {}.", maxRows);
-    boolean activeUpgradeComplete = false;
-    while (!activeUpgradeComplete) {
-      activeUpgradeComplete = TransactionRunners.run(transactionRunner, context -> {
-        AppMetadataStore store = getAppMetadataStore(context);
-        return store.upgradeActiveRunRecords(maxRows);
-      });
-    }
-
-    LOG.info("Finished upgrading active run records. Calculating the old run counts.");
-    boolean computeComplete = false;
-    while (!computeComplete) {
-      computeComplete = TransactionRunners.run(transactionRunner, context -> {
-        AppMetadataStore store = getAppMetadataStore(context);
-        return store.computeOldCompletedRunCount(maxRows);
-      });
-    }
-
-    LOG.info("Finished calculating the old run counts. Merging the old run counts");
-    boolean upgradeComplete = false;
-    while (!upgradeComplete) {
-      upgradeComplete = TransactionRunners.run(transactionRunner, context -> {
-        AppMetadataStore store = getAppMetadataStore(context);
-        return store.mergeCountResult(maxRows);
-      });
-    }
-
-    LOG.info("Finished upgrading the run counts. Upgrade completed.");
-    TransactionRunners.run(transactionRunner, context -> {
-      AppMetadataStore store = getAppMetadataStore(context);
-      store.deleteStartUpTimeRow();
-      store.upgradeCompleted();
-    });
-  }
-
-  // Returns true if the upgrade flag is set. Upgrade could have completed earlier than this since this flag is
-  // updated asynchronously.
-  public boolean isUpgradeComplete() {
-    return TransactionRunners.run(transactionRunner, context -> {
-      // The create call will update the upgradeComplete flag
-      return AppMetadataStore.create(context).hasUpgraded();
-    });
-  }
-
-  /**
    * Returns the {@link ProgramSpecification} for the specified {@link ProgramId program}.
    * @param appSpec the {@link ApplicationSpecification} of the existing application
    * @param programId the {@link ProgramId program} for which the {@link ProgramSpecification} is requested

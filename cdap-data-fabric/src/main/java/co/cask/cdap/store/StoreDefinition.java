@@ -236,7 +236,6 @@ public final class StoreDefinition {
     public static final StructuredTableId RUN_RECORDS = new StructuredTableId("run_records");
     public static final StructuredTableId WORKFLOWS = new StructuredTableId("workflows");
     public static final StructuredTableId PROGRAM_COUNTS = new StructuredTableId("program_counts");
-    public static final StructuredTableId UPGRADE_METADATA = new StructuredTableId("upgrade_metadata");
     // TODO: CDAP-14876 Move this table into it's own store, along with associated methods
     public static final StructuredTableId SUBSCRIBER_STATE = new StructuredTableId("subscriber_state");
 
@@ -255,8 +254,6 @@ public final class StoreDefinition {
     public static final String WORKFLOW_DATA = "workflow_data";
     public static final String COUNT_TYPE = "count_type";
     public static final String COUNTS = "counts";
-    public static final String METADATA_KEY = "metadata_key";
-    public static final String METADATA_VALUE  = "metadata_value";
     public static final String SUBSCRIBER_TOPIC = "subscriber_topic";
     public static final String SUBSCRIBER_MESSAGE = "subscriber_message";
     public static final String SUBSCRIBER = "subscriber";
@@ -331,14 +328,6 @@ public final class StoreDefinition {
           COUNT_TYPE, NAMESPACE_FIELD, APPLICATION_FIELD, VERSION_FIELD, PROGRAM_TYPE_FIELD, PROGRAM_FIELD)
         .build();
 
-    public static final StructuredTableSpecification UPGRADE_METADATA_SPEC =
-      new StructuredTableSpecification.Builder()
-        .withId(UPGRADE_METADATA)
-        .withFields(Fields.stringType(METADATA_KEY),
-                    Fields.stringType(METADATA_VALUE))
-        .withPrimaryKeys(METADATA_KEY)
-        .build();
-
     public static final StructuredTableSpecification SUBSCRIBER_STATE_SPEC =
       new StructuredTableSpecification.Builder()
         .withId(SUBSCRIBER_STATE)
@@ -354,7 +343,6 @@ public final class StoreDefinition {
       tableAdmin.create(RUN_RECORDS_SPEC);
       tableAdmin.create(WORKFLOWS_SPEC);
       tableAdmin.create(PROGRAM_COUNTS_SPEC);
-      tableAdmin.create(UPGRADE_METADATA_SPEC);
       tableAdmin.create(SUBSCRIBER_STATE_SPEC);
     }
   }

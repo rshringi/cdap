@@ -25,7 +25,6 @@ import co.cask.cdap.app.runtime.ProgramController;
 import co.cask.cdap.common.BadRequestException;
 import co.cask.cdap.common.app.RunIds;
 import co.cask.cdap.common.conf.Constants;
-import co.cask.cdap.common.utils.ProjectInfo;
 import co.cask.cdap.data2.dataset2.lib.table.MDSKey;
 import co.cask.cdap.internal.app.ApplicationSpecificationAdapter;
 import co.cask.cdap.internal.app.runtime.ProgramOptionConstants;
@@ -105,18 +104,9 @@ public class AppMetadataStore {
   private static final Logger LOG = LoggerFactory.getLogger(AppMetadataStore.class);
   private static final Gson GSON = ApplicationSpecificationAdapter.addTypeAdapters(new GsonBuilder()).create();
   private static final Type MAP_STRING_STRING_TYPE = new TypeToken<Map<String, String>>() { }.getType();
-  private static final String APP_VERSION_UPGRADE_KEY = "version.default.store";
-  private static final String RUN_COUNT_FIRST_UPGRADE_TIME = "run.count.first.upgrade.time";
-  // this row key will be used to record the progress of upgrade run count since for completed run records we do not
-  // modify the row key, so we do not know which row has been counted.
-  private static final String RUN_COUNT_PROGRESS = "run.count.progress";
 
   private static final String TYPE_RUN_RECORD_ACTIVE = "runRecordActive";
 
-  // we will keep these since these will be needed during upgrade
-  private static final String TYPE_RUN_RECORD_STARTING = "runRecordStarting";
-  private static final String TYPE_RUN_RECORD_STARTED = "runRecordStarted";
-  private static final String TYPE_RUN_RECORD_SUSPENDED = "runRecordSuspended";
   private static final String TYPE_RUN_RECORD_COMPLETED = "runRecordCompleted";
 
   private static final String TYPE_COUNT = "runRecordCount";
@@ -133,21 +123,12 @@ public class AppMetadataStore {
     .put(ProgramRunStatus.FAILED, TYPE_RUN_RECORD_COMPLETED)
     .build();
 
-  // These are for caching the upgraded state to avoid reading from Table again after upgrade is completed
-  // The interval is to avoid frequent reading from Table before upgrade is completed
-  // The upgrade is done outside of this class asynchronously.
-  // One upgrade is completed, the upgradeCompleted() method will be called from the upgrade thread
-  // to clear the lastUpgradeCompletedCheck.
-  private static final long UPGRADE_COMPLETED_CHECK_INTERVAL = TimeUnit.MINUTES.toMillis(1L);
-  private static volatile boolean upgradeCompleted;
-  private static long lastUpgradeCompletedCheck;
 
   private final StructuredTable applicationSpecificationTable;
   private final StructuredTable workflowNodeStateTable;
   private final StructuredTable runRecordsTable;
   private final StructuredTable workflowsTable;
   private final StructuredTable programCountsTable;
-  private final StructuredTable upgradeMetadataTable;
   private final StructuredTable subscriberStateTable;
 
   /**
@@ -172,8 +153,6 @@ public class AppMetadataStore {
       context.getTable(StoreDefinition.AppMetadataStore.WORKFLOWS);
     this.programCountsTable =
       context.getTable(StoreDefinition.AppMetadataStore.PROGRAM_COUNTS);
-    this.upgradeMetadataTable =
-      context.getTable(StoreDefinition.AppMetadataStore.UPGRADE_METADATA);
     this.subscriberStateTable =
       context.getTable(StoreDefinition.AppMetadataStore.SUBSCRIBER_STATE);
   }
@@ -1223,228 +1202,6 @@ public class AppMetadataStore {
   }
 
   /**
-   * Write the start time for the upgrade if it does not exist.
-   */
-  void writeUpgradeStartTimeIfNotExist() throws IOException {
-    Optional<StructuredRow> row = getUpgradeMetadataRow(RUN_COUNT_FIRST_UPGRADE_TIME);
-    if (!row.isPresent()) {
-      LOG.info("Start to upgrade the run count");
-      Collection<Field<?>> fields = ImmutableList.of(
-        Fields.stringField(StoreDefinition.AppMetadataStore.METADATA_KEY, RUN_COUNT_FIRST_UPGRADE_TIME),
-        Fields.stringField(
-          StoreDefinition.AppMetadataStore.METADATA_VALUE,
-          String.valueOf(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()))));
-      upgradeMetadataTable.upsert(fields);
-    }
-  }
-
-  /**
-   * Upgrade the active run records.
-   *
-   * @param maxRows maximum number of rows to be upgraded in this call.
-   * @return a boolean indicating whether the upgrade of active run records is complete.
-   */
-  boolean upgradeActiveRunRecords(int maxRows) throws IOException {
-    int remainingRows = maxRows - upgradeActiveRowkey(TYPE_RUN_RECORD_STARTING, maxRows);
-    if (remainingRows > 0) {
-      remainingRows -= upgradeActiveRowkey(TYPE_RUN_RECORD_STARTED, remainingRows);
-    }
-    if (remainingRows > 0) {
-      remainingRows -= upgradeActiveRowkey(TYPE_RUN_RECORD_SUSPENDED, remainingRows);
-    }
-
-    // If we are not able to scan to the max number of rows, that means we reach the end of the active run records
-    return remainingRows > 0;
-  }
-
-  /**
-   * Upgrades the rowkeys for the active run record. Note that we do not count the run record of the old active runs
-   * since it is hard to deal with the races and we expect user to stop all the programs before they do the upgrade.
-   *
-   * @param recordType type of the record.
-   * @param maxRows maximum number of rows to be upgraded in this call.
-   * @return the number of rows it updates
-   */
-  private int upgradeActiveRowkey(String recordType, int maxRows) throws IOException {
-    List<Field<?>> startKey = getRunRecordStatusPrefix(recordType);
-    List<StructuredRow> rows;
-    try (CloseableIterator<StructuredRow> iterator = runRecordsTable.scan(Range.singleton(startKey), maxRows)) {
-      rows = ImmutableList.copyOf(iterator);
-    }
-
-    for (StructuredRow row : rows) {
-      Collection<Field<?>> keys = row.getPrimaryKeys();
-      RunRecordMeta runRecord = deserializeRunRecordMeta(row);
-      List<Field<?>> newKeys = getProgramIDFields(keys);
-      newKeys.add(
-        Fields.longField(
-          StoreDefinition.AppMetadataStore.RUN_START_TIME, getInvertedTsKeyPart(runRecord.getStartTs())));
-      newKeys.add(Fields.stringField(StoreDefinition.AppMetadataStore.RUN_FIELD, runRecord.getPid()));
-      newKeys.add(Fields.stringField(StoreDefinition.AppMetadataStore.RUN_RECORD_DATA, GSON.toJson(runRecord)));
-      runRecordsTable.delete(keys);
-      runRecordsTable.upsert(newKeys);
-    }
-
-    LOG.info("Upgrading {} active run records of {}", rows.size(), recordType);
-
-    return rows.size();
-  }
-
-  /**
-   * Upgrades the rowkeys for the completed run record which is older than the time at row key
-   * RUN_COUNT_FIRST_UPGRADE_TIME.
-   *
-   * @param maxRows maximum number of rows to be upgraded in this call.
-   * @return true if all old completed run records has been scanned.
-   */
-  boolean computeOldCompletedRunCount(int maxRows) throws IOException {
-    Optional<StructuredRow> upgradeStart = getUpgradeMetadataRow(RUN_COUNT_FIRST_UPGRADE_TIME);
-    if (!upgradeStart.isPresent()) {
-      // this should not happen since we will write the upgrade start time before the upgrade start
-      LOG.warn("Unable to get the first upgrade start time, will use the current timestamp to distinguish the old " +
-                 "run records");
-    }
-
-    long upgradeStartTime =
-      upgradeStart.isPresent()
-        ? Long.valueOf(upgradeStart.get().getString(StoreDefinition.AppMetadataStore.METADATA_VALUE))
-        : TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
-
-    // get the progress we have, if no entry, scan from the beginning
-    Optional<StructuredRow> progress = getUpgradeMetadataRow(RUN_COUNT_PROGRESS);
-    List<Field<?>> prefix = getRunRecordStatusPrefix(TYPE_RUN_RECORD_COMPLETED);
-    // ArrayList to be precise about deserialization
-    List<Field<?>> startKey =
-      progress.isPresent()
-        ? GSON.fromJson(progress.get().getString(StoreDefinition.AppMetadataStore.METADATA_VALUE),
-                        new TypeToken<ArrayList<Field<?>>>() {
-                        }.getType())
-        : prefix;
-
-    // Bound is EXCLUSIVE so that we do not re-read the same record. This is fine for the beginning since prefix is
-    // not a valid key.
-    List<Field<?>> lastPrimaryKey = null;
-    int numProcessed = 0;
-    try (CloseableIterator<StructuredRow> iterator =
-      runRecordsTable.scan(Range.from(startKey, Range.Bound.EXCLUSIVE), maxRows)) {
-      Map<List<Field<?>>, Long> counts = new HashMap<>();
-
-      while (iterator.hasNext()) {
-        StructuredRow row = iterator.next();
-        RunRecordMeta runRecord = deserializeRunRecordMeta(row);
-        lastPrimaryKey = new ArrayList<>(row.getPrimaryKeys());
-        List<Field<?>> programFields = getProgramIDFields(lastPrimaryKey);
-        // Fields should be in correct primary key ordering
-        if (runRecord.getStartTs() < upgradeStartTime) {
-          counts.compute(programFields, (programFields1, count) -> count == null ? 1L : count + 1L);
-        }
-        numProcessed++;
-      }
-    }
-
-    if (lastPrimaryKey != null) {
-      upgradeMetadataTable.upsert(
-        ImmutableList.of(Fields.stringField(StoreDefinition.AppMetadataStore.METADATA_KEY, RUN_COUNT_PROGRESS),
-                         Fields.stringField(StoreDefinition.AppMetadataStore.METADATA_VALUE,
-                                            GSON.toJson(lastPrimaryKey))));
-    }
-
-    // If we are not able to get the max number of rows, that means we reach the end of this record type
-    return numProcessed < maxRows;
-  }
-
-  /**
-   * Merge the old count result to the new count cell.
-   *
-   * @param maxRows maximum number of rows to be upgraded in this call.
-   * @return true if all the old result has been merged.
-   */
-  boolean mergeCountResult(int maxRows) throws IOException {
-    List<Field<?>> key = getCountTypePrefix(TYPE_RUN_RECORD_UPGRADE_COUNT);
-    List<StructuredRow> rows;
-    try (CloseableIterator<StructuredRow> iterator =
-      programCountsTable.scan(Range.from(key, Range.Bound.INCLUSIVE), maxRows)) {
-      rows = ImmutableList.copyOf(iterator);
-    }
-    for (StructuredRow row : rows) {
-      Collection<Field<?>> primaryKeys = row.getPrimaryKeys();
-      List<Field<?>> newKeys = new ArrayList<>();
-      for (Field<?> field : primaryKeys) {
-        if (field.getName().equals(StoreDefinition.AppMetadataStore.COUNT_TYPE)) {
-          newKeys.add(Fields.stringField(StoreDefinition.AppMetadataStore.COUNT_TYPE, TYPE_COUNT));
-        } else {
-          newKeys.add(field);
-        }
-      }
-      programCountsTable.increment(
-        newKeys, StoreDefinition.AppMetadataStore.COUNTS, row.getLong(StoreDefinition.AppMetadataStore.COUNTS));
-      programCountsTable.delete(primaryKeys);
-    }
-
-    return rows.size() < maxRows;
-  }
-
-  void deleteStartUpTimeRow() throws IOException {
-    upgradeMetadataTable.delete(
-      ImmutableList.of(
-        Fields.stringField(StoreDefinition.AppMetadataStore.METADATA_KEY, RUN_COUNT_FIRST_UPGRADE_TIME)));
-  }
-
-  /**
-   * @return true if the upgrade of the app meta store is complete
-   */
-  boolean hasUpgraded() throws IOException {
-    boolean upgraded = upgradeCompleted;
-    if (upgraded) {
-      return true;
-    }
-
-    // See if need to check the Table or not
-    long now = System.currentTimeMillis();
-    if (now - lastUpgradeCompletedCheck < UPGRADE_COMPLETED_CHECK_INTERVAL) {
-      return false;
-    }
-
-    synchronized (AppMetadataStore.class) {
-      // Check again, as it can be checked by other thread
-      upgraded = upgradeCompleted;
-      if (upgraded) {
-        return true;
-      }
-
-      lastUpgradeCompletedCheck = now;
-
-      Optional<StructuredRow> row = getUpgradeMetadataRow(APP_VERSION_UPGRADE_KEY);
-      if (!row.isPresent()) {
-        return false;
-      }
-      String version = row.get().getString(StoreDefinition.AppMetadataStore.METADATA_VALUE);
-      ProjectInfo.Version actual = new ProjectInfo.Version(version);
-      upgradeCompleted = upgraded = actual.compareTo(ProjectInfo.getVersion()) >= 0;
-    }
-    return upgraded;
-  }
-
-  /**
-   * Mark the table that the upgrade is complete.
-   * TODO: CDAP-14114 change the logic to run count upgrade
-   */
-  public void upgradeCompleted() throws IOException {
-    MDSKey.Builder keyBuilder = new MDSKey.Builder();
-    keyBuilder.add(APP_VERSION_UPGRADE_KEY);
-    List<Field<?>> fields =
-      ImmutableList.of(Fields.stringField(StoreDefinition.AppMetadataStore.METADATA_KEY, APP_VERSION_UPGRADE_KEY),
-                       Fields.stringField(StoreDefinition.AppMetadataStore.METADATA_VALUE,
-                                          ProjectInfo.getVersion().toString()));
-    upgradeMetadataTable.upsert(fields);
-
-    // Reset the lastUpgradeCompletedCheck to 0L to force checking from Table next time when hasUpgraded is called
-    synchronized (AppMetadataStore.class) {
-      lastUpgradeCompletedCheck = 0L;
-    }
-  }
-
-  /**
    * Gets the id of the last fetched message that was set for a subscriber of the given TMS topic
    *
    * @param topic the topic to lookup the last message id
@@ -1509,7 +1266,6 @@ public class AppMetadataStore {
     deleteTable(runRecordsTable, StoreDefinition.AppMetadataStore.RUN_STATUS);
     deleteTable(workflowsTable, StoreDefinition.AppMetadataStore.NAMESPACE_FIELD);
     deleteTable(programCountsTable, StoreDefinition.AppMetadataStore.COUNT_TYPE);
-    deleteTable(upgradeMetadataTable, StoreDefinition.AppMetadataStore.METADATA_KEY);
     deleteTable(subscriberStateTable, StoreDefinition.AppMetadataStore.SUBSCRIBER_TOPIC);
   }
 
@@ -1518,35 +1274,11 @@ public class AppMetadataStore {
       Range.from(ImmutableList.of(Fields.stringField(firstKey, SMALLEST_POSSIBLE_STRING)), Range.Bound.INCLUSIVE));
   }
 
-  /**
-   * Returns a ProgramId given the primary keys
-   *
-   * @param fullPrimaryKeys the full set of primary keys to get the programId fields from
-   * @return the remaining list of primary keys which describe a programId
-   */
-  private List<Field<?>> getProgramIDFields(Collection<Field<?>> fullPrimaryKeys) {
-    List<Field<?>> newKeys = new ArrayList();
-    for (Field<?> field : fullPrimaryKeys) {
-      if (!field.getName().equals(StoreDefinition.AppMetadataStore.RUN_START_TIME)
-        && !field.getName().equals(StoreDefinition.AppMetadataStore.RUN_FIELD)) {
-        newKeys.add(field);
-      }
-    }
-    return newKeys;
-  }
-
   private List<Field<?>> getSubscriberKeys(String topic, String subscriber) {
     List<Field<?>> fields = new ArrayList<>();
     fields.add(Fields.stringField(StoreDefinition.AppMetadataStore.SUBSCRIBER_TOPIC, topic));
     fields.add(Fields.stringField(StoreDefinition.AppMetadataStore.SUBSCRIBER, subscriber));
     return fields;
-  }
-
-  private Optional<StructuredRow> getUpgradeMetadataRow(String keyFieldName) throws IOException {
-    List<Field<?>> fields = new ArrayList();
-    fields.add(
-      Fields.stringField(StoreDefinition.AppMetadataStore.METADATA_KEY, keyFieldName));
-    return upgradeMetadataTable.read(fields);
   }
 
   private List<Field<?>> getProgramRunInvertedTimeKey(String recordType, ProgramRunId runId, long startTs) {
