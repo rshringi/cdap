@@ -62,6 +62,7 @@ import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.ProgramRunId;
 import co.cask.cdap.spi.data.StructuredTableContext;
+import co.cask.cdap.spi.data.TableNotFoundException;
 import co.cask.cdap.spi.data.transaction.TransactionRunner;
 import co.cask.cdap.spi.data.transaction.TransactionRunners;
 import com.google.common.collect.ImmutableMap;
@@ -166,13 +167,14 @@ public class MetadataSubscriberService extends AbstractMessagingSubscriberServic
 
   @Nullable
   @Override
-  protected String loadMessageId(StructuredTableContext context) throws IOException {
+  protected String loadMessageId(StructuredTableContext context) throws IOException, TableNotFoundException {
     AppMetadataStore appMetadataStore = AppMetadataStore.create(context);
     return appMetadataStore.retrieveSubscriberState(getTopicId().getTopic(), "metadata.writer");
   }
 
   @Override
-  protected void storeMessageId(StructuredTableContext context, String messageId) throws IOException {
+  protected void storeMessageId(StructuredTableContext context, String messageId)
+    throws IOException, TableNotFoundException {
     AppMetadataStore appMetadataStore = AppMetadataStore.create(context);
     appMetadataStore.persistSubscriberState(getTopicId().getTopic(), "metadata.writer", messageId);
   }

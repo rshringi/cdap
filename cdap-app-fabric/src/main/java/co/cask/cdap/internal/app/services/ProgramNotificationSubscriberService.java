@@ -50,6 +50,7 @@ import co.cask.cdap.reporting.ProgramHeartbeatDataset;
 import co.cask.cdap.runtime.spi.provisioner.Cluster;
 import co.cask.cdap.security.spi.authentication.SecurityRequestContext;
 import co.cask.cdap.spi.data.StructuredTableContext;
+import co.cask.cdap.spi.data.TableNotFoundException;
 import co.cask.cdap.spi.data.transaction.TransactionRunner;
 import co.cask.cdap.spi.data.transaction.TransactionRunners;
 import com.google.common.collect.ImmutableMap;
@@ -125,12 +126,13 @@ public class ProgramNotificationSubscriberService extends AbstractNotificationSu
 
   @Nullable
   @Override
-  protected String loadMessageId(StructuredTableContext context) throws IOException {
+  protected String loadMessageId(StructuredTableContext context) throws IOException, TableNotFoundException {
     return getAppMetadataStore(context).retrieveSubscriberState(getTopicId().getTopic(), "");
   }
 
   @Override
-  protected void storeMessageId(StructuredTableContext context, String messageId) throws IOException {
+  protected void storeMessageId(StructuredTableContext context, String messageId)
+    throws IOException, TableNotFoundException {
     getAppMetadataStore(context).persistSubscriberState(getTopicId().getTopic(), "", messageId);
   }
 
@@ -228,7 +230,7 @@ public class ProgramNotificationSubscriberService extends AbstractNotificationSu
         RunRecordMeta runRecordMeta = appMetadataStore.getRun(programRunId);
         long heartBeatTimeInSeconds =
           TimeUnit.MILLISECONDS.toSeconds(Long.parseLong(properties.get(ProgramOptionConstants.HEART_BEAT_TIME)));
-        writeToHeartBeatDataset(runRecordMeta, heartBeatTimeInSeconds, datasetContext, programHeartbeatDataset);
+        writeToHeartBeatDataset(runRecordMeta, heartBeatTimeInSeconds, programHeartbeatDataset);
         // we can return after writing to heart beat table
         return Collections.emptyList();
       }
@@ -279,7 +281,7 @@ public class ProgramNotificationSubscriberService extends AbstractNotificationSu
         recordedRunRecord = appMetadataStore.recordProgramStart(programRunId, twillRunId,
                                                                 systemArguments, messageIdBytes);
         writeToHeartBeatDataset(recordedRunRecord,
-                                RunIds.getTime(programRunId.getRun(), TimeUnit.SECONDS), datasetContext,
+                                RunIds.getTime(programRunId.getRun(), TimeUnit.SECONDS),
                                 programHeartbeatDataset);
         break;
       case RUNNING:
@@ -292,7 +294,7 @@ public class ProgramNotificationSubscriberService extends AbstractNotificationSu
         }
         recordedRunRecord =
           appMetadataStore.recordProgramRunning(programRunId, logicalStartTimeSecs, twillRunId, messageIdBytes);
-        writeToHeartBeatDataset(recordedRunRecord, logicalStartTimeSecs, datasetContext, programHeartbeatDataset);
+        writeToHeartBeatDataset(recordedRunRecord, logicalStartTimeSecs, programHeartbeatDataset);
         break;
       case SUSPENDED:
         long suspendTime = getTimeSeconds(notification.getProperties(),
@@ -300,7 +302,7 @@ public class ProgramNotificationSubscriberService extends AbstractNotificationSu
         // since we are adding suspend time recently, there might be old suspended notificications for which time
         // can be -1.
         recordedRunRecord = appMetadataStore.recordProgramSuspend(programRunId, messageIdBytes, suspendTime);
-        writeToHeartBeatDataset(recordedRunRecord, suspendTime, datasetContext, programHeartbeatDataset);
+        writeToHeartBeatDataset(recordedRunRecord, suspendTime, programHeartbeatDataset);
         break;
       case RESUMING:
         long resumeTime = getTimeSeconds(notification.getProperties(),
@@ -308,7 +310,7 @@ public class ProgramNotificationSubscriberService extends AbstractNotificationSu
         // since we are adding suspend time recently, there might be old suspended notificications for which time
         // can be -1.
         recordedRunRecord = appMetadataStore.recordProgramResumed(programRunId, messageIdBytes, resumeTime);
-        writeToHeartBeatDataset(recordedRunRecord, resumeTime, datasetContext, programHeartbeatDataset);
+        writeToHeartBeatDataset(recordedRunRecord, resumeTime, programHeartbeatDataset);
         break;
       case COMPLETED:
         if (endTimeSecs == -1) {
@@ -318,7 +320,7 @@ public class ProgramNotificationSubscriberService extends AbstractNotificationSu
         }
         recordedRunRecord =
           appMetadataStore.recordProgramStop(programRunId, endTimeSecs, programRunStatus, null, messageIdBytes);
-        writeToHeartBeatDataset(recordedRunRecord, endTimeSecs, datasetContext, programHeartbeatDataset);
+        writeToHeartBeatDataset(recordedRunRecord, endTimeSecs, programHeartbeatDataset);
         if (recordedRunRecord != null) {
           runnable = getEmitMetricsRunnable(programRunId, recordedRunRecord,
                                             Constants.Metrics.Program.PROGRAM_COMPLETED_RUNS);
@@ -332,7 +334,7 @@ public class ProgramNotificationSubscriberService extends AbstractNotificationSu
         }
         recordedRunRecord =
           appMetadataStore.recordProgramStop(programRunId, endTimeSecs, programRunStatus, null, messageIdBytes);
-        writeToHeartBeatDataset(recordedRunRecord, endTimeSecs, datasetContext, programHeartbeatDataset);
+        writeToHeartBeatDataset(recordedRunRecord, endTimeSecs, programHeartbeatDataset);
         if (recordedRunRecord != null) {
           runnable = getEmitMetricsRunnable(programRunId, recordedRunRecord,
                                             Constants.Metrics.Program.PROGRAM_KILLED_RUNS);
@@ -347,7 +349,7 @@ public class ProgramNotificationSubscriberService extends AbstractNotificationSu
         BasicThrowable cause = decodeBasicThrowable(properties.get(ProgramOptionConstants.PROGRAM_ERROR));
         recordedRunRecord =
           appMetadataStore.recordProgramStop(programRunId, endTimeSecs, programRunStatus, cause, messageIdBytes);
-        writeToHeartBeatDataset(recordedRunRecord, endTimeSecs, datasetContext, programHeartbeatDataset);
+        writeToHeartBeatDataset(recordedRunRecord, endTimeSecs, programHeartbeatDataset);
         if (recordedRunRecord != null) {
           runnable = getEmitMetricsRunnable(programRunId, recordedRunRecord,
                                             Constants.Metrics.Program.PROGRAM_FAILED_RUNS);
@@ -387,7 +389,7 @@ public class ProgramNotificationSubscriberService extends AbstractNotificationSu
    * write to heart beat dataset if the recordedRunRecord is not null
    */
   private void writeToHeartBeatDataset(@Nullable RunRecordMeta recordedRunRecord,
-                                       long timestampInSeconds, DatasetContext datasetContext,
+                                       long timestampInSeconds,
                                        ProgramHeartbeatDataset programHeartbeatDataset) {
     if (recordedRunRecord != null) {
       programHeartbeatDataset.writeRunRecordMeta(recordedRunRecord, timestampInSeconds);
@@ -397,7 +399,7 @@ public class ProgramNotificationSubscriberService extends AbstractNotificationSu
   private Optional<Runnable> handleClusterEvent(ProgramRunId programRunId, ProgramRunClusterStatus clusterStatus,
                                                 Notification notification, byte[] messageIdBytes,
                                                 DatasetContext datasetContext, AppMetadataStore appMetadataStore)
-    throws IOException {
+    throws IOException, TableNotFoundException {
     Map<String, String> properties = notification.getProperties();
 
     ProgramOptions programOptions = createProgramOptions(programRunId.getParent(), properties);

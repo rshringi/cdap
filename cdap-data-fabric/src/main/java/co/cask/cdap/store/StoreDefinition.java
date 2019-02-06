@@ -237,7 +237,7 @@ public final class StoreDefinition {
     public static final StructuredTableId WORKFLOWS = new StructuredTableId("workflows");
     public static final StructuredTableId PROGRAM_COUNTS = new StructuredTableId("program_counts");
     // TODO: CDAP-14876 Move this table into it's own store, along with associated methods
-    public static final StructuredTableId SUBSCRIBER_STATE = new StructuredTableId("subscriber_state");
+    public static final StructuredTableId SUBSCRIBER_STATES = new StructuredTableId("subscriber_state");
 
     public static final String NAMESPACE_FIELD = "namespace";
     public static final String APPLICATION_FIELD = "application";
@@ -330,7 +330,7 @@ public final class StoreDefinition {
 
     public static final StructuredTableSpecification SUBSCRIBER_STATE_SPEC =
       new StructuredTableSpecification.Builder()
-        .withId(SUBSCRIBER_STATE)
+        .withId(SUBSCRIBER_STATES)
         .withFields(Fields.stringType(SUBSCRIBER_TOPIC),
                     Fields.stringType(SUBSCRIBER),
                     Fields.stringType(SUBSCRIBER_MESSAGE))

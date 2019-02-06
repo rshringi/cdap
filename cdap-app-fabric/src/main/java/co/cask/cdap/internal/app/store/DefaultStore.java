@@ -191,7 +191,7 @@ public class DefaultStore implements Store {
 
   private void recordCompletedWorkflow(AppMetadataStore metaStore, WorkflowTable workflowTable,
                                        WorkflowId workflowId, String runId)
-    throws IOException {
+    throws IOException, TableNotFoundException {
     RunRecordMeta runRecord = metaStore.getRun(workflowId.run(runId));
     if (runRecord == null) {
       return;
@@ -606,7 +606,8 @@ public class DefaultStore implements Store {
     });
   }
 
-  private ApplicationSpecification getApplicationSpec(AppMetadataStore mds, ApplicationId id) throws IOException {
+  private ApplicationSpecification getApplicationSpec(AppMetadataStore mds, ApplicationId id)
+    throws IOException, TableNotFoundException {
     ApplicationMeta meta = mds.getApplication(id.getNamespace(), id.getApplication(), id.getVersion());
     return meta == null ? null : meta.getSpec();
   }
@@ -656,11 +657,13 @@ public class DefaultStore implements Store {
     return workerSpecification;
   }
 
-  private ApplicationSpecification getAppSpecOrFail(AppMetadataStore mds, ProgramId id) throws IOException {
+  private ApplicationSpecification getAppSpecOrFail(AppMetadataStore mds, ProgramId id)
+    throws IOException, TableNotFoundException {
     return getAppSpecOrFail(mds, id.getParent());
   }
 
-  private ApplicationSpecification getAppSpecOrFail(AppMetadataStore mds, ApplicationId id) throws IOException {
+  private ApplicationSpecification getAppSpecOrFail(AppMetadataStore mds, ApplicationId id)
+    throws IOException, TableNotFoundException {
     ApplicationSpecification appSpec = getApplicationSpec(mds, id);
     if (appSpec == null) {
       throw new NoSuchElementException("no such application @ namespace id: " + id.getNamespaceId() +

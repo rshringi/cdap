@@ -27,6 +27,7 @@ import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.ProfileId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.ProgramRunId;
+import co.cask.cdap.spi.data.TableNotFoundException;
 import co.cask.cdap.spi.data.transaction.TransactionRunner;
 import co.cask.cdap.spi.data.transaction.TransactionRunners;
 import com.google.common.collect.ImmutableList;
@@ -81,7 +82,7 @@ public abstract class AppMetadataStoreTest {
   }
 
   private void recordProvisionAndStart(ProgramRunId programRunId, AppMetadataStore metadataStoreDataset)
-    throws IOException {
+    throws IOException, TableNotFoundException {
     metadataStoreDataset.recordProgramProvisioning(programRunId, Collections.emptyMap(), SINGLETON_PROFILE_MAP,
                                                    AppFabricTestHelper.createSourceId(sourceId.incrementAndGet()),
                                                    ARTIFACT_ID);

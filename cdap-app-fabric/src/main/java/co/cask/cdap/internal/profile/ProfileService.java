@@ -45,6 +45,7 @@ import co.cask.cdap.proto.profile.Profile;
 import co.cask.cdap.proto.provisioner.ProvisionerInfo;
 import co.cask.cdap.proto.provisioner.ProvisionerPropertyValue;
 import co.cask.cdap.runtime.spi.profile.ProfileStatus;
+import co.cask.cdap.spi.data.TableNotFoundException;
 import co.cask.cdap.spi.data.transaction.TransactionRunner;
 import co.cask.cdap.spi.data.transaction.TransactionRunners;
 import com.google.common.annotations.VisibleForTesting;
@@ -340,7 +341,8 @@ public class ProfileService {
   }
 
   private void deleteProfile(ProfileDataset profileDataset, AppMetadataStore appMetadataStore, ProfileId profileId,
-                             Profile profile) throws ProfileConflictException, NotFoundException, IOException {
+                             Profile profile)
+    throws ProfileConflictException, NotFoundException, IOException, TableNotFoundException {
     // The profile status must be DISABLED
     if (profile.getStatus() == ProfileStatus.ENABLED) {
       throw new ProfileConflictException(
