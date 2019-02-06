@@ -53,13 +53,10 @@ public class SqlDefaultStoreTest extends DefaultStoreTest {
     StructuredTableAdmin structuredTableAdmin =
       new PostgresSqlStructuredTableAdmin(new SqlStructuredTableRegistry(), dataSource);
     TransactionRunner transactionRunner = new SqlTransactionRunner(structuredTableAdmin, dataSource);
+    StoreDefinition.createAllTables(structuredTableAdmin, true);
 
-    // TODO(CDAP-14770): fully change this when migrating the rest of DefaultStore
-    store =
-      new DefaultStore(injector.getInstance(CConfiguration.class),
-                       injector.getInstance(DatasetFramework.class),
-                       injector.getInstance(TransactionSystemClient.class),
-                       transactionRunner);
+
+    store = new DefaultStore(transactionRunner);
 
     nsStore = new DefaultNamespaceStore(transactionRunner);
     nsAdmin = new DefaultNamespaceAdmin(
@@ -67,8 +64,6 @@ public class SqlDefaultStoreTest extends DefaultStoreTest {
       injector.getProvider(NamespaceResourceDeleter.class), injector.getProvider(StorageProviderNamespaceAdmin.class),
       injector.getInstance(CConfiguration.class), injector.getInstance(Impersonator.class),
       injector.getInstance(AuthorizationEnforcer.class), injector.getInstance(AuthenticationContext.class));
-    StoreDefinition.NamespaceStore.createTable(structuredTableAdmin);
-    StoreDefinition.WorkflowStore.createTables(structuredTableAdmin);
   }
 
   @AfterClass

@@ -147,6 +147,13 @@ public class AppFabricTestHelper {
       }
       injector.getInstance(DatasetOpExecutor.class).startAndWait();
       injector.getInstance(DatasetService.class).startAndWait();
+      // Register the tables before services will need to use them
+      StructuredTableAdmin tableAdmin = injector.getInstance(StructuredTableAdmin.class);
+      try {
+        StoreDefinition.createAllTables(tableAdmin);
+      } catch (IOException | TableAlreadyExistsException e) {
+        throw new RuntimeException("Failed to create the system tables", e);
+      }
       injector.getInstance(MetricsCollectionService.class).startAndWait();
       injector.getInstance(MetadataSubscriberService.class).startAndWait();
       injector.getInstance(ProgramNotificationSubscriberService.class).startAndWait();
