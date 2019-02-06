@@ -72,7 +72,6 @@ public class ProfileService {
   private static final Logger LOG = LoggerFactory.getLogger(ProfileService.class);
   private final DatasetFramework datasetFramework;
   private final Transactional transactional;
-  private final CConfiguration cConf;
   private final MetricsSystemClient metricsSystemClient;
   private final TransactionRunner transactionRunner;
 
@@ -87,7 +86,6 @@ public class ProfileService {
         Collections.emptyMap(), null, null)),
       RetryStrategies.retryOnConflict(20, 100)
     );
-    this.cConf = cConf;
     this.metricsSystemClient = metricsSystemClient;
     this.transactionRunner = transactionRunner;
   }
