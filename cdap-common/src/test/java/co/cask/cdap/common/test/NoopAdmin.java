@@ -17,7 +17,6 @@
 package co.cask.cdap.common.test;
 
 import co.cask.cdap.api.Admin;
-import co.cask.cdap.api.NamespaceSummary;
 import co.cask.cdap.api.dataset.DatasetManagementException;
 import co.cask.cdap.api.dataset.DatasetProperties;
 import co.cask.cdap.api.dataset.InstanceNotFoundException;
@@ -110,11 +109,5 @@ public class NoopAdmin implements Admin {
   @Override
   public boolean namespaceExists(String namespace) throws IOException {
     return false;
-  }
-
-  @Nullable
-  @Override
-  public NamespaceSummary getNamespaceSummary(String namespace) throws IOException {
-    return null;
   }
 }

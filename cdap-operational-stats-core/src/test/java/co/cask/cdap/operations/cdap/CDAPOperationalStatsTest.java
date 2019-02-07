@@ -26,6 +26,7 @@ import co.cask.cdap.internal.AppFabricTestHelper;
 import co.cask.cdap.operations.OperationalStats;
 import co.cask.cdap.proto.NamespaceMeta;
 import co.cask.cdap.proto.id.NamespaceId;
+import co.cask.cdap.scheduler.Scheduler;
 import com.google.inject.Injector;
 import org.apache.tephra.Transaction;
 import org.apache.tephra.TransactionSystemClient;
