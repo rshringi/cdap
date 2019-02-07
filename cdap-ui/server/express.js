@@ -17,6 +17,7 @@
 
 /* global require, module, process, __dirname */
 var urlhelper = require('./url-helper');
+const csp = require('helmet-csp');
 
 module.exports = {
   getApp: function() {
@@ -33,6 +34,7 @@ module.exports = {
 
 var path = require('path');
 var express = require('express'),
+  ejs = require('ejs'),
   cookieParser = require('cookie-parser'),
   compression = require('compression'),
   finalhandler = require('finalhandler'),
@@ -49,6 +51,7 @@ var express = require('express'),
   fs = require('fs'),
   objectQuery = require('lodash/get');
 
+ejs.delimiter = '_';
 var log = log4js.getLogger('default');
 const uiThemePropertyName = 'ui.theme.file';
 
@@ -159,6 +162,9 @@ function extractUITheme(cdapConfig, uiThemePath) {
 
 function makeApp(authAddress, cdapConfig, uiSettings) {
   var app = express();
+  app.engine('html', ejs.renderFile);
+  app.set('view engine', 'html');
+  app.set('views', [DIST_PATH, LOGIN_DIST_PATH, `${CDAP_DIST_PATH}/cdap_assets`, MARKET_DIST_PATH]);
 
   let uiThemeConfig = {};
   try {
@@ -179,6 +185,22 @@ function makeApp(authAddress, cdapConfig, uiSettings) {
   app.use(bodyParser.json());
   app.use(bodyParser.urlencoded({ extended: false }));
   app.use(cookieParser());
+
+  if (!isModeDevelopment()) {
+    app.use(function(req, res, next) {
+      res.locals.nonce = uuidV4();
+      next();
+    });
+    app.use(
+      csp({
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+          scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`],
+        },
+      })
+    );
+  }
 
   app.use(function(err, req, res, next) {
     log.error(err);
@@ -647,7 +669,7 @@ function makeApp(authAddress, cdapConfig, uiSettings) {
         } else {
           res.cookie('bcookie', req.cookies.bcookie, { expires: date });
         }
-        res.sendFile(DIST_PATH + '/hydrator.html');
+        res.render('hydrator', { nonceVal: `${res.locals.nonce || ''}` });
       },
     ]
   );
@@ -665,7 +687,7 @@ function makeApp(authAddress, cdapConfig, uiSettings) {
         } else {
           res.cookie('bcookie', req.cookies.bcookie, { expires: date });
         }
-        res.sendFile(DIST_PATH + '/tracker.html');
+        res.render('tracker', { nonceVal: `${res.locals.nonce || ''}` });
       },
     ]
   );
@@ -684,7 +706,7 @@ function makeApp(authAddress, cdapConfig, uiSettings) {
         } else {
           res.cookie('bcookie', req.cookies.bcookie, { expires: date });
         }
-        res.sendFile(DIST_PATH + '/logviewer.html');
+        res.render('logviewer', { nonceVal: `${res.locals.nonce || ''}` });
       },
     ]
   );
@@ -693,7 +715,7 @@ function makeApp(authAddress, cdapConfig, uiSettings) {
     ['/', '/cdap', '/cdap*'],
     [
       function(req, res) {
-        res.sendFile(CDAP_DIST_PATH + '/cdap_assets/cdap.html');
+        res.render('cdap', { nonceVal: `${res.locals.nonce || ''}` });
       },
     ]
   );
