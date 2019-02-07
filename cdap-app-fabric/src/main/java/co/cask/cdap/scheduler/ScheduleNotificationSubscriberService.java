@@ -37,6 +37,7 @@ import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.ProgramRunId;
 import co.cask.cdap.proto.id.ScheduleId;
+import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.AbstractIdleService;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.Service;
@@ -48,6 +49,7 @@ import org.apache.twill.common.Threads;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -208,6 +210,9 @@ public class ScheduleNotificationSubscriberService extends AbstractIdleService {
       } catch (NotFoundException e) {
         LOG.warn("Ignore notification that doesn't have a schedule {} associated with, {}", scheduleId, notification);
         return;
+      } catch (IOException e) {
+        // TODO: (poorna) handle exception
+        throw Throwables.propagate(e);
       }
       jobQueue.addNotification(record, notification);
     }
@@ -232,8 +237,14 @@ public class ScheduleNotificationSubscriberService extends AbstractIdleService {
         return;
       }
       DatasetId datasetId = DatasetId.fromString(datasetIdString);
-      for (ProgramScheduleRecord schedule : scheduleStore.findSchedules(Schedulers.triggerKeyForPartition(datasetId))) {
-        jobQueue.addNotification(schedule, notification);
+      try {
+        // TODO: (poorna) handle exception
+        for (ProgramScheduleRecord schedule :
+          scheduleStore.findSchedules(Schedulers.triggerKeyForPartition(datasetId))) {
+          jobQueue.addNotification(schedule, notification);
+        }
+      } catch (IOException e) {
+        throw Throwables.propagate(e);
       }
     }
   }
@@ -272,8 +283,13 @@ public class ScheduleNotificationSubscriberService extends AbstractIdleService {
       ProgramId programId = programRunId.getParent();
       String triggerKeyForProgramStatus = Schedulers.triggerKeyForProgramStatus(programId, programStatus);
 
-      for (ProgramScheduleRecord schedule : scheduleStore.findSchedules(triggerKeyForProgramStatus)) {
-        jobQueue.addNotification(schedule, notification);
+      try {
+        for (ProgramScheduleRecord schedule : scheduleStore.findSchedules(triggerKeyForProgramStatus)) {
+          jobQueue.addNotification(schedule, notification);
+        }
+      } catch (IOException e) {
+        // TODO: (poorna) handle exception
+        throw Throwables.propagate(e);
       }
     }
   }

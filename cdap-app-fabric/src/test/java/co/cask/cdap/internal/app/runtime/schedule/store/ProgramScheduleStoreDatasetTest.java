@@ -17,7 +17,6 @@
 package co.cask.cdap.internal.app.runtime.schedule.store;
 
 import co.cask.cdap.api.ProgramStatus;
-import co.cask.cdap.api.dataset.DatasetManagementException;
 import co.cask.cdap.data.runtime.DynamicTransactionExecutorFactory;
 import co.cask.cdap.data2.dataset2.DatasetFramework;
 import co.cask.cdap.data2.transaction.TransactionExecutorFactory;
@@ -35,6 +34,10 @@ import co.cask.cdap.proto.id.ApplicationId;
 import co.cask.cdap.proto.id.DatasetId;
 import co.cask.cdap.proto.id.NamespaceId;
 import co.cask.cdap.proto.id.WorkflowId;
+import co.cask.cdap.spi.data.StructuredTableAdmin;
+import co.cask.cdap.spi.data.transaction.TransactionRunner;
+import co.cask.cdap.spi.data.transaction.TransactionRunners;
+import co.cask.cdap.store.StoreDefinition;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -42,6 +45,7 @@ import org.apache.tephra.TransactionAware;
 import org.apache.tephra.TransactionExecutor;
 import org.apache.tephra.TransactionSystemClient;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Collection;
@@ -71,22 +75,15 @@ public class ProgramScheduleStoreDatasetTest extends AppFabricTestBase {
   private static final DatasetId DS1_ID = NS1_ID.dataset("pfs1");
   private static final DatasetId DS2_ID = NS1_ID.dataset("pfs2");
 
-  @Test
-  public void checkDatasetType() throws DatasetManagementException {
-    DatasetFramework dsFramework = getInjector().getInstance(DatasetFramework.class);
-    Assert.assertTrue(dsFramework.hasType(NamespaceId.SYSTEM.datasetType(Schedulers.STORE_TYPE_NAME)));
+  @BeforeClass
+  public static void before() throws Exception {
+    StructuredTableAdmin tableAdmin = getInjector().getInstance(StructuredTableAdmin.class);
+    StoreDefinition.ProgramScheduleStore.createTables(tableAdmin);
   }
 
   @Test
-  public void testListSchedules() throws Exception {
-    DatasetFramework dsFramework = getInjector().getInstance(DatasetFramework.class);
-    TransactionSystemClient txClient = getInjector().getInstance(TransactionSystemClient.class);
-    TransactionExecutorFactory txExecutorFactory = new DynamicTransactionExecutorFactory(txClient);
-    dsFramework.truncateInstance(Schedulers.STORE_DATASET_ID);
-    final ProgramScheduleStoreDataset store =
-      dsFramework.getDataset(Schedulers.STORE_DATASET_ID, new HashMap<>(), null);
-    Assert.assertNotNull(store);
-    TransactionExecutor txExecutor = txExecutorFactory.createExecutor(Collections.singleton((TransactionAware) store));
+  public void testListSchedules() {
+    TransactionRunner transactionRunner = getInjector().getInstance(TransactionRunner.class);
 
     final ProgramSchedule sched1 = new ProgramSchedule("sched1", "one partition schedule", PROG1_ID,
       Collections.emptyMap(), new PartitionTrigger(DS1_ID, 1), Collections.emptyList());
@@ -97,45 +94,59 @@ public class ProgramScheduleStoreDatasetTest extends AppFabricTestBase {
     final ProgramSchedule sched4 = new ProgramSchedule("sched4", "time schedule", PROG5_ID,
       Collections.emptyMap(), new TimeTrigger("* * * 2 1"), Collections.emptyList());
 
-    txExecutor.execute(() -> {
-      // assert no schedules exists before adding schedules
-      Assert.assertTrue(store.listSchedules(NS1_ID, schedule -> true).isEmpty());
-      Assert.assertTrue(store.listSchedules(NS2_ID, schedule -> true).isEmpty());
-      Assert.assertTrue(store.listScheduleRecords(APP1_ID).isEmpty());
-      Assert.assertTrue(store.listScheduleRecords(APP2_ID).isEmpty());
-      Assert.assertTrue(store.listScheduleRecords(APP3_ID).isEmpty());
-      Assert.assertTrue(store.listScheduleRecords(PROG1_ID).isEmpty());
-      Assert.assertTrue(store.listScheduleRecords(PROG2_ID).isEmpty());
-      Assert.assertTrue(store.listScheduleRecords(PROG3_ID).isEmpty());
-      Assert.assertTrue(store.listScheduleRecords(PROG4_ID).isEmpty());
-    });
+    // assert no schedules exists before adding schedules
+    TransactionRunners.run(
+      transactionRunner,
+      context -> {
+        ProgramScheduleStoreDataset store = Schedulers.getScheduleStore(context);
+        Assert.assertTrue(store.listSchedules(NS1_ID, schedule -> true).isEmpty());
+        Assert.assertTrue(store.listSchedules(NS2_ID, schedule -> true).isEmpty());
+        Assert.assertTrue(store.listScheduleRecords(APP1_ID).isEmpty());
+        Assert.assertTrue(store.listScheduleRecords(APP2_ID).isEmpty());
+        Assert.assertTrue(store.listScheduleRecords(APP3_ID).isEmpty());
+        Assert.assertTrue(store.listScheduleRecords(PROG1_ID).isEmpty());
+        Assert.assertTrue(store.listScheduleRecords(PROG2_ID).isEmpty());
+        Assert.assertTrue(store.listScheduleRecords(PROG3_ID).isEmpty());
+        Assert.assertTrue(store.listScheduleRecords(PROG4_ID).isEmpty());
+      }
+    );
+
     // add schedules to the store
-    txExecutor.execute(() -> {
-      store.addSchedules(ImmutableList.of(sched1, sched2, sched3, sched4));
-    });
-    txExecutor.execute(() -> {
-      // list schedules by namespace
-      Assert.assertEquals(ImmutableSet.of(sched1, sched2),
-                          new HashSet<>(store.listSchedules(NS1_ID, schedule -> true)));
-      Assert.assertEquals(ImmutableSet.of(sched3, sched4),
-                          new HashSet<>(store.listSchedules(NS2_ID, schedule -> true)));
-      // list schedules by app
-      Assert.assertEquals(ImmutableSet.of(sched1),
-                          toScheduleSet(store.listScheduleRecords(APP1_ID)));
-      Assert.assertEquals(ImmutableSet.of(sched2),
-                          toScheduleSet(store.listScheduleRecords(APP2_ID)));
-      Assert.assertEquals(ImmutableSet.of(sched3, sched4),
-                          toScheduleSet(store.listScheduleRecords(APP3_ID)));
-      // list schedules by program
-      Assert.assertEquals(ImmutableSet.of(sched1),
-                          toScheduleSet(store.listScheduleRecords(PROG1_ID)));
-      Assert.assertEquals(ImmutableSet.of(sched2),
-                          toScheduleSet(store.listScheduleRecords(PROG2_ID)));
-      Assert.assertEquals(ImmutableSet.of(sched3),
-                          toScheduleSet(store.listScheduleRecords(PROG4_ID)));
-      Assert.assertEquals(ImmutableSet.of(sched4),
-                          toScheduleSet(store.listScheduleRecords(PROG5_ID)));
-    });
+    TransactionRunners.run(
+      transactionRunner,
+      context -> {
+        ProgramScheduleStoreDataset store = Schedulers.getScheduleStore(context);
+        store.addSchedules(ImmutableList.of(sched1, sched2, sched3, sched4));
+      }
+    );
+
+    // list schedules by namespace
+    TransactionRunners.run(
+      transactionRunner,
+      context -> {
+        ProgramScheduleStoreDataset store = Schedulers.getScheduleStore(context);
+        Assert.assertEquals(ImmutableSet.of(sched1, sched2),
+                            new HashSet<>(store.listSchedules(NS1_ID, schedule -> true)));
+        Assert.assertEquals(ImmutableSet.of(sched3, sched4),
+                            new HashSet<>(store.listSchedules(NS2_ID, schedule -> true)));
+        // list schedules by app
+        Assert.assertEquals(ImmutableSet.of(sched1),
+                            toScheduleSet(store.listScheduleRecords(APP1_ID)));
+        Assert.assertEquals(ImmutableSet.of(sched2),
+                            toScheduleSet(store.listScheduleRecords(APP2_ID)));
+        Assert.assertEquals(ImmutableSet.of(sched3, sched4),
+                            toScheduleSet(store.listScheduleRecords(APP3_ID)));
+        // list schedules by program
+        Assert.assertEquals(ImmutableSet.of(sched1),
+                            toScheduleSet(store.listScheduleRecords(PROG1_ID)));
+        Assert.assertEquals(ImmutableSet.of(sched2),
+                            toScheduleSet(store.listScheduleRecords(PROG2_ID)));
+        Assert.assertEquals(ImmutableSet.of(sched3),
+                            toScheduleSet(store.listScheduleRecords(PROG4_ID)));
+        Assert.assertEquals(ImmutableSet.of(sched4),
+                            toScheduleSet(store.listScheduleRecords(PROG5_ID)));
+      }
+    );
   }
 
   @Test
@@ -144,7 +155,7 @@ public class ProgramScheduleStoreDatasetTest extends AppFabricTestBase {
     DatasetFramework dsFramework = getInjector().getInstance(DatasetFramework.class);
     TransactionSystemClient txClient = getInjector().getInstance(TransactionSystemClient.class);
     TransactionExecutorFactory txExecutorFactory = new DynamicTransactionExecutorFactory(txClient);
-    dsFramework.truncateInstance(Schedulers.STORE_DATASET_ID);
+//    dsFramework.truncateInstance(Schedulers.STORE_DATASET_ID);
     final ProgramScheduleStoreDataset store = dsFramework.getDataset(Schedulers.STORE_DATASET_ID,
                                                                      new HashMap<String, String>(), null);
     Assert.assertNotNull(store);
@@ -273,7 +284,7 @@ public class ProgramScheduleStoreDatasetTest extends AppFabricTestBase {
     DatasetFramework dsFramework = getInjector().getInstance(DatasetFramework.class);
     TransactionSystemClient txClient = getInjector().getInstance(TransactionSystemClient.class);
     TransactionExecutorFactory txExecutorFactory = new DynamicTransactionExecutorFactory(txClient);
-    dsFramework.truncateInstance(Schedulers.STORE_DATASET_ID);
+//    dsFramework.truncateInstance(Schedulers.STORE_DATASET_ID);
     final ProgramScheduleStoreDataset store = dsFramework.getDataset(Schedulers.STORE_DATASET_ID,
                                                                      new HashMap<String, String>(), null);
     Assert.assertNotNull(store);

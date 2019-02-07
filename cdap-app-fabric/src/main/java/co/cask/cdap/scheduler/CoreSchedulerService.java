@@ -18,7 +18,6 @@ package co.cask.cdap.scheduler;
 
 import co.cask.cdap.api.Transactional;
 import co.cask.cdap.api.Transactionals;
-import co.cask.cdap.api.dataset.DatasetProperties;
 import co.cask.cdap.api.dataset.lib.CloseableIterator;
 import co.cask.cdap.app.program.ProgramDescriptor;
 import co.cask.cdap.app.store.Store;
@@ -58,6 +57,8 @@ import co.cask.cdap.proto.id.ProgramId;
 import co.cask.cdap.proto.id.ScheduleId;
 import co.cask.cdap.runtime.spi.profile.ProfileStatus;
 import co.cask.cdap.security.impersonation.Impersonator;
+import co.cask.cdap.spi.data.transaction.TransactionRunner;
+import co.cask.cdap.spi.data.transaction.TransactionRunners;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.util.concurrent.AbstractIdleService;
@@ -102,6 +103,7 @@ public class CoreSchedulerService extends AbstractIdleService implements Schedul
   private final Store appMetaStore;
   private final Impersonator impersonator;
   private final CConfiguration cConf;
+  private final TransactionRunner transactionRunner;
 
   @Inject
   CoreSchedulerService(TransactionSystemClient txClient, DatasetFramework datasetFramework,
@@ -109,7 +111,8 @@ public class CoreSchedulerService extends AbstractIdleService implements Schedul
                        ScheduleNotificationSubscriberService scheduleNotificationSubscriberService,
                        ConstraintCheckerService constraintCheckerService,
                        MessagingService messagingService,
-                       CConfiguration cConf, Store store, Impersonator impersonator) {
+                       CConfiguration cConf, Store store, Impersonator impersonator,
+                       TransactionRunner transactionRunner) {
     this.cConf = cConf;
     this.startedLatch = new CountDownLatch(1);
     this.datasetFramework = datasetFramework;
@@ -123,6 +126,7 @@ public class CoreSchedulerService extends AbstractIdleService implements Schedul
     this.timeSchedulerService = timeSchedulerService;
     this.appMetaStore = store;
     this.impersonator = impersonator;
+    this.transactionRunner = transactionRunner;
     // Use a retry on failure service to make it resilience to transient service unavailability during startup
     this.internalService = new RetryOnStartFailureService(() -> new AbstractIdleService() {
 
@@ -133,10 +137,6 @@ public class CoreSchedulerService extends AbstractIdleService implements Schedul
 
       @Override
       protected void startUp() throws Exception {
-        if (!datasetFramework.hasInstance(Schedulers.STORE_DATASET_ID)) {
-          datasetFramework.addInstance(Schedulers.STORE_TYPE_NAME,
-                                       Schedulers.STORE_DATASET_ID, DatasetProperties.EMPTY);
-        }
         timeSchedulerService.startAndWait();
         cleanupJobs();
         constraintCheckerService.startAndWait();
@@ -394,7 +394,7 @@ public class CoreSchedulerService extends AbstractIdleService implements Schedul
   @Override
   public void deleteSchedules(Iterable<? extends ScheduleId> scheduleIds) throws NotFoundException {
     checkStarted();
-    execute((StoreQueueAndProfileTxRunnable<Void, NotFoundException>) (store, queue, profileDataset) -> {
+    execute((StoreQueueAndProfileTxRunnable<Void, Exception>) (store, queue, profileDataset) -> {
       long deleteTime = System.currentTimeMillis();
       for (ScheduleId scheduleId : scheduleIds) {
         ProgramSchedule schedule = store.getSchedule(scheduleId);
@@ -422,7 +422,7 @@ public class CoreSchedulerService extends AbstractIdleService implements Schedul
   @Override
   public void deleteSchedules(ApplicationId appId) {
     checkStarted();
-    execute((StoreQueueAndProfileTxRunnable<Void, RuntimeException>) (store, queue, profileDataset) -> {
+    execute((StoreQueueAndProfileTxRunnable<Void, Exception>) (store, queue, profileDataset) -> {
       long deleteTime = System.currentTimeMillis();
       List<ProgramSchedule> schedules = store.listSchedules(appId);
       deleteSchedulesInScheduler(schedules);
@@ -453,7 +453,7 @@ public class CoreSchedulerService extends AbstractIdleService implements Schedul
   @Override
   public void deleteSchedules(ProgramId programId) {
     checkStarted();
-    execute((StoreQueueAndProfileTxRunnable<Void, RuntimeException>) (store, queue, profileDataset) -> {
+    execute((StoreQueueAndProfileTxRunnable<Void, Exception>) (store, queue, profileDataset) -> {
       long deleteTime = System.currentTimeMillis();
       List<ProgramSchedule> schedules = store.listSchedules(programId);
       deleteSchedulesInScheduler(schedules);
@@ -484,7 +484,7 @@ public class CoreSchedulerService extends AbstractIdleService implements Schedul
   @Override
   public void modifySchedulesTriggeredByDeletedProgram(ProgramId programId) {
     checkStarted();
-    execute((StoreAndQueueTxRunnable<Void, RuntimeException>) (store, queue) -> {
+    execute((StoreAndQueueTxRunnable<Void, Exception>) (store, queue) -> {
       store.modifySchedulesTriggeredByDeletedProgram(programId);
       return null;
     }, RuntimeException.class);
@@ -595,16 +595,18 @@ public class CoreSchedulerService extends AbstractIdleService implements Schedul
     V run(ProgramScheduleStoreDataset store, JobQueueDataset jobQueue, ProfileDataset profileDataset) throws T;
   }
 
-  private <V, T extends Exception> V execute(StoreTxRunnable<V, T> runnable,
+  private <V, T extends Exception> V execute(StoreTxRunnable<V, ? extends Exception> runnable,
                                              Class<? extends T> tClass) throws T {
-    return Transactionals.execute(transactional, context -> {
-      ProgramScheduleStoreDataset store = Schedulers.getScheduleStore(context, datasetFramework);
-      return runnable.run(store);
-    }, tClass);
+    return TransactionRunners.run(
+      transactionRunner,
+      context -> {
+        ProgramScheduleStoreDataset store = Schedulers.getScheduleStore(context);
+        return runnable.run(store);
+      }, tClass);
   }
 
   @SuppressWarnings("UnusedReturnValue")
-  private <V, T extends Exception> V execute(StoreAndQueueTxRunnable<V, T> runnable,
+  private <V, T extends Exception> V execute(StoreAndQueueTxRunnable<V, ? extends Exception> runnable,
                                              Class<? extends T> tClass) throws T {
     return Transactionals.execute(transactional, context -> {
       ProgramScheduleStoreDataset store = Schedulers.getScheduleStore(context, datasetFramework);
@@ -614,7 +616,7 @@ public class CoreSchedulerService extends AbstractIdleService implements Schedul
   }
 
   @SuppressWarnings({"UnusedReturnValue", "SameParameterValue"})
-  private <V, T extends Exception> V execute(StoreAndProfileTxRunnable<V, T> runnable,
+  private <V, T extends Exception> V execute(StoreAndProfileTxRunnable<V, ? extends Exception> runnable,
                                              Class<? extends T> tClass) throws T {
     return Transactionals.execute(transactional, context -> {
       ProgramScheduleStoreDataset store = Schedulers.getScheduleStore(context, datasetFramework);
@@ -624,7 +626,7 @@ public class CoreSchedulerService extends AbstractIdleService implements Schedul
   }
 
   @SuppressWarnings("UnusedReturnValue")
-  private <V, T extends Exception> V execute(StoreQueueAndProfileTxRunnable<V, T> runnable,
+  private <V, T extends Exception> V execute(StoreQueueAndProfileTxRunnable<V, ? extends Exception> runnable,
                                              Class<? extends T> tClass) throws T {
     return Transactionals.execute(transactional, context -> {
       ProgramScheduleStoreDataset store = Schedulers.getScheduleStore(context, datasetFramework);
