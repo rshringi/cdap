@@ -55,6 +55,12 @@ public final class StoreDefinition {
     if (overWrite || tableAdmin.getSpecification(WorkflowStore.WORKFLOW_STATISTICS) == null) {
       WorkflowStore.createTables(tableAdmin);
     }
+    if (overWrite || tableAdmin.getSpecification(DatasetInstanceStore.DATASET_INSTANCES) == null) {
+      DatasetInstanceStore.createTables(tableAdmin);
+    }
+    if (overWrite || tableAdmin.getSpecification(DatasetTypeStore.DATASET_TYPES) == null) {
+      DatasetTypeStore.createTables(tableAdmin);
+    }
   }
 
   public static void createAllTables(StructuredTableAdmin tableAdmin, StructuredTableRegistry registry)
@@ -207,6 +213,7 @@ public final class StoreDefinition {
    * Schema for {@link SecretStore}.
    */
   public static final class SecretStore {
+
     public static final StructuredTableId SECRET_STORE_TABLE = new StructuredTableId("secret_store");
     public static final String NAMESPACE_FIELD = "namespace";
     public static final String SECRET_NAME_FIELD = "secret_name";
@@ -222,6 +229,68 @@ public final class StoreDefinition {
 
     public static void createTable(StructuredTableAdmin tableAdmin) throws IOException, TableAlreadyExistsException {
       tableAdmin.create(SECRET_STORE_SPEC);
+    }
+  }
+
+  /**
+   * Dataset instance store schema
+   */
+  public static final class DatasetInstanceStore {
+
+    public static final StructuredTableId DATASET_INSTANCES =
+      new StructuredTableId("dataset_instances");
+
+    public static final String NAMESPACE_FIELD = "namespace";
+    public static final String DATASET_FIELD = "dataset";
+    public static final String DATASET_METADATA_FIELD = "dataset_metadata";
+
+    public static final StructuredTableSpecification DATASET_INSTANCES_SPEC =
+      new StructuredTableSpecification.Builder()
+        .withId(DATASET_INSTANCES)
+        .withFields(Fields.stringType(NAMESPACE_FIELD),
+                    Fields.stringType(DATASET_FIELD),
+                    Fields.stringType(DATASET_METADATA_FIELD))
+        .withPrimaryKeys(NAMESPACE_FIELD, DATASET_FIELD)
+        .build();
+
+    public static void createTables(StructuredTableAdmin tableAdmin) throws IOException, TableAlreadyExistsException {
+      tableAdmin.create(DATASET_INSTANCES_SPEC);
+    }
+  }
+
+  /**
+   * Dataset type store schema
+   */
+  public static final class DatasetTypeStore {
+
+    public static final StructuredTableId DATASET_TYPES = new StructuredTableId("dataset_types");
+    public static final StructuredTableId MODULE_TYPES = new StructuredTableId("module_types");
+
+    public static final String NAMESPACE_FIELD = "namespace";
+    public static final String MODULE_NAME_FIELD = "module_name";
+    public static final String TYPE_NAME_FIELD = "type_name";
+    public static final String DATASET_METADATA_FIELD = "dataset_metadata";
+
+    public static final StructuredTableSpecification DATASET_TYPES_SPEC =
+      new StructuredTableSpecification.Builder()
+        .withId(DATASET_TYPES)
+        .withFields(Fields.stringType(NAMESPACE_FIELD),
+                    Fields.stringType(TYPE_NAME_FIELD),
+                    Fields.stringType(DATASET_METADATA_FIELD))
+        .withPrimaryKeys(NAMESPACE_FIELD, TYPE_NAME_FIELD)
+        .build();
+    public static final StructuredTableSpecification MODULE_TYPES_SPEC =
+      new StructuredTableSpecification.Builder()
+        .withId(MODULE_TYPES)
+        .withFields(Fields.stringType(NAMESPACE_FIELD),
+                    Fields.stringType(MODULE_NAME_FIELD),
+                    Fields.stringType(DATASET_METADATA_FIELD))
+        .withPrimaryKeys(NAMESPACE_FIELD, MODULE_NAME_FIELD)
+        .build();
+
+    public static void createTables(StructuredTableAdmin tableAdmin) throws IOException, TableAlreadyExistsException {
+      tableAdmin.create(DATASET_TYPES_SPEC);
+      tableAdmin.create(MODULE_TYPES_SPEC);
     }
   }
 }
