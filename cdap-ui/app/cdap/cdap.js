@@ -14,6 +14,9 @@
  * the License.
  */
 
+// eslint-disable-next-line no-undef
+__webpack_nonce__ = window.__webpack_nonce__;
+
 import T from 'i18n-react';
 // Initialize i18n
 T.setTexts(require('./text/text-en.yaml'));

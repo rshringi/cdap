@@ -25,10 +25,11 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="description" content="Cask Data Application Platform">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta property="csp-nonce" content="<_= nonceVal _>">
   <base href="/pipelines/"></base>
 
-  <link rel="stylesheet" type="text/css" href="/assets/bundle/lib.css" />
-  <link rel="stylesheet" type="text/css" href="/assets/bundle/app.css" />
+  <link rel="stylesheet" nonce="<_= nonceVal _>" type="text/css" href="/assets/bundle/lib.css" />
+  <link rel="stylesheet" nonce="<_= nonceVal _>" type="text/css" href="/assets/bundle/app.css" />
 </head>
 
 <body ng-class="bodyClass" class="cdap-body-container" ng-controller="BodyCtrl" ng-keyup="onSearch($event)">
@@ -43,17 +44,25 @@
   <status-alert-message></status-alert-message>
   <global-footer></global-footer>
   <auth-refresher></auth-refresher>
+  <!--
+      This should not be a problem as no external script can use this.
+      A script can execute in the page only when we add it with a nonce attribute.
+      Or by webpack for dynamic loading which again we control.
+    -->
+  <script type="text/javascript" nonce="<_= nonceVal _>">
+    window.__webpack_nonce__ = "<_= nonceVal _>";
+  </script>
 
-  <script type="text/javascript" src="/config.js"></script>
-  <script type="text/javascript" src="/ui-config.js"></script>
-  <script type="text/javascript" src="/ui-theme.js"></script>
-  <script type="text/javascript" src="/assets/bundle/polyfill.js"></script>
-  <script type="text/javascript" src="/assets/bundle/lib.js"></script>
-  <script type="text/javascript" src="/common_assets/common-lib-new.js"></script>
-  <script type="text/javascript" src="/common_assets/common-new.js"></script>
-  <script type="text/javascript" src="/assets/bundle/hydrator.js"></script>
-  <script type="text/javascript" src="/assets/bundle/common.es6.js"></script>
-  <script type="text/javascript" src="/assets/bundle/tpl.js"></script>
+  <script type="text/javascript"  nonce="<_= nonceVal _>" src="/config.js"></script>
+  <script type="text/javascript"  nonce="<_= nonceVal _>" src="/ui-config.js"></script>
+  <script type="text/javascript"  nonce="<_= nonceVal _>" src="/ui-theme.js"></script>
+  <script type="text/javascript"  nonce="<_= nonceVal _>" src="/assets/bundle/polyfill.js"></script>
+  <script type="text/javascript"  nonce="<_= nonceVal _>" src="/assets/bundle/lib.js"></script>
+  <script type="text/javascript"  nonce="<_= nonceVal _>" src="/common_assets/common-lib-new.js"></script>
+  <script type="text/javascript"  nonce="<_= nonceVal _>" src="/common_assets/common-new.js"></script>
+  <script type="text/javascript"  nonce="<_= nonceVal _>" src="/assets/bundle/hydrator.js"></script>
+  <script type="text/javascript"  nonce="<_= nonceVal _>" src="/assets/bundle/common.es6.js"></script>
+  <script type="text/javascript"  nonce="<_= nonceVal _>" src="/assets/bundle/tpl.js"></script>
 </body>
 
 </html>
