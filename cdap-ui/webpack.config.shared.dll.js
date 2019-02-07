@@ -51,6 +51,7 @@ const getWebpackDLLPlugin = (mode) => {
 var plugins = [
   new webpack.DefinePlugin({
     'process.env': processEnv,
+    global: 'window',
   }),
   getWebpackDLLPlugin(mode),
 ];
@@ -74,6 +75,9 @@ if (isModeProduction(mode)) {
 
 var webpackConfig = {
   mode,
+  node: {
+    global: false,
+  },
   entry: {
     vendor: [
       'react',

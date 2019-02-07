@@ -45,6 +45,7 @@ var plugins = [
         ? JSON.stringify('production')
         : JSON.stringify('development'),
     },
+    global: 'window',
   }),
 ];
 
@@ -137,7 +138,7 @@ var rules = [
 if (isModeProduction(mode)) {
   plugins.push(
     new UglifyJsPlugin({
-      sourceMap: true,
+      // sourceMap: true,
       uglifyOptions: {
         ie8: false,
         compress: {
@@ -153,6 +154,9 @@ if (isModeProduction(mode)) {
 }
 var webpackConfig = {
   mode: isModeProduction(mode) ? 'production' : 'development',
+  node: {
+    global: false,
+  },
   context: __dirname + '/app/common',
   optimization: {
     splitChunks: {
@@ -160,8 +164,9 @@ var webpackConfig = {
     },
   },
   entry: {
-    'common-new': ['./cask-shared-components.js'],
+    'common-new': ['./common-entry.js', './cask-shared-components.js'],
     'common-lib-new': [
+      './common-entry.js',
       '@babel/polyfill',
       'classnames',
       'reactstrap',
