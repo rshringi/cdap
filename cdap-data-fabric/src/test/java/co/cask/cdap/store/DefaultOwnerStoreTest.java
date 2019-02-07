@@ -33,6 +33,7 @@ import co.cask.cdap.security.authorization.AuthorizationTestModule;
 import co.cask.cdap.security.impersonation.OwnerStore;
 import co.cask.cdap.spi.data.StructuredTableAdmin;
 import co.cask.cdap.spi.data.TableAlreadyExistsException;
+import co.cask.cdap.spi.data.table.StructuredTableRegistry;
 import co.cask.cdap.spi.data.transaction.TransactionRunner;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -77,6 +78,7 @@ public class DefaultOwnerStoreTest extends OwnerStoreTest {
     );
 
     injector.getInstance(TransactionManager.class).startAndWait();
+    injector.getInstance(StructuredTableRegistry.class).initialize();
 
     StructuredTableAdmin structuredTableAdmin = injector.getInstance(StructuredTableAdmin.class);
     TransactionRunner transactionRunner =
