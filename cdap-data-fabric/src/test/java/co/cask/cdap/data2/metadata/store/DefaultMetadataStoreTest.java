@@ -22,7 +22,7 @@ import co.cask.cdap.common.guice.NamespaceAdminTestModule;
 import co.cask.cdap.data.runtime.DataSetsModules;
 import co.cask.cdap.data.runtime.StorageModule;
 import co.cask.cdap.data.runtime.SystemDatasetRuntimeModule;
-import co.cask.cdap.data2.audit.AuditModule;
+import co.cask.cdap.data2.audit.AuditTestModule;
 import co.cask.cdap.security.auth.context.AuthenticationContextModules;
 import co.cask.cdap.security.authorization.AuthorizationEnforcementModule;
 import co.cask.cdap.security.authorization.AuthorizationTestModule;
@@ -60,8 +60,7 @@ public class DefaultMetadataStoreTest extends AbstractMetadataStoreTest {
       new AuthorizationTestModule(),
       new AuthorizationEnforcementModule().getInMemoryModules(),
       new AuthenticationContextModules().getMasterModule(),
-      new AuditModule().getInMemoryModules(),
-      new StorageModule()
+      new AuditTestModule()
     );
     txManager = injector.getInstance(TransactionManager.class);
     txManager.startAndWait();

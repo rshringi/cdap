@@ -29,6 +29,7 @@ $success_alert_bg_color: $brand-success;
     border-bottom: 1px solid $grey-05;
     margin-left: 0;
     display: flex;
+    flex-wrap: unset;
 
     .left-title,
     .action-buttons,
@@ -111,6 +112,7 @@ $success_alert_bg_color: $brand-success;
       align-items: center;
       justify-content: flex-end;
       z-index: 999;
+      height: 49px;
 
       .btn-primary {
         margin: 0 10px;
@@ -120,7 +122,7 @@ $success_alert_bg_color: $brand-success;
       }
 
       .plus-button {
-        margin: 0px 15px 51px 0;
+        margin: 0 15px 51px 0;
         .popper {
           margin-right: 20px;
         }
