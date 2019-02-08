@@ -1140,8 +1140,10 @@ public class AppMetadataStore {
   public void deleteProgramHistory(String namespaceId, String appId, String versionId)
     throws IOException, TableNotFoundException {
     ApplicationId applicationId = new ApplicationId(namespaceId, appId, versionId);
-    getRunRecordsTable().deleteAll(Range.singleton(getRunRecordApplicationPrefix(TYPE_RUN_RECORD_ACTIVE, applicationId)));
-    getRunRecordsTable().deleteAll(Range.singleton(getRunRecordApplicationPrefix(TYPE_RUN_RECORD_COMPLETED, applicationId)));
+    getRunRecordsTable()
+      .deleteAll(Range.singleton(getRunRecordApplicationPrefix(TYPE_RUN_RECORD_ACTIVE, applicationId)));
+    getRunRecordsTable()
+      .deleteAll(Range.singleton(getRunRecordApplicationPrefix(TYPE_RUN_RECORD_COMPLETED, applicationId)));
     getProgramCountsTable().deleteAll(Range.singleton(getCountApplicationPrefix(TYPE_COUNT, applicationId)));
     getProgramCountsTable().deleteAll(
       Range.singleton(getCountApplicationPrefix(TYPE_RUN_RECORD_UPGRADE_COUNT, applicationId)));
