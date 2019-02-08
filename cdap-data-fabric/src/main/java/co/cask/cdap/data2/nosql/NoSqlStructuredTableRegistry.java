@@ -99,7 +99,9 @@ public class NoSqlStructuredTableRegistry implements StructuredTableRegistry {
         throw new TableAlreadyExistsException(tableId);
       }
       serialized = Bytes.toBytes(GSON.toJson(specification));
-      table.swap(rowKeyBytes, SCHEMA_COL_BYTES, null, serialized);
+      if (!table.swap(rowKeyBytes, SCHEMA_COL_BYTES, null, serialized)) {
+        throw new TableAlreadyExistsException(tableId);
+      }
     } finally {
       closeRegistryTable(table);
     }
