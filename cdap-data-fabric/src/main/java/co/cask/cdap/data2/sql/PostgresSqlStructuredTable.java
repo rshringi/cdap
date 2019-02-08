@@ -232,7 +232,6 @@ public class PostgresSqlStructuredTable implements StructuredTable {
     fieldsWithValue.add(Fields.longField(column, amount));
     String sql = getWriteSqlQuery(fieldsWithValue, column);
     try (PreparedStatement statement = connection.prepareStatement(sql)) {
-      statement.setLong(1, amount);
       int index = 1;
       for (Field<?> key : fieldsWithValue) {
         setField(statement, key, index);

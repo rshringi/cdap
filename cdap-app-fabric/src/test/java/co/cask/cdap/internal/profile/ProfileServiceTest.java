@@ -206,8 +206,7 @@ public class ProfileServiceTest {
     try {
       profileService.deleteProfile(profileId2);
       Assert.fail();
-      // TODO: CDAP-14770 make profileconflictexception extend runtimeexception so the exception can be propagated
-    } catch (Exception e) {
+    } catch (ProfileConflictException e) {
       // expected
     }
     profileService.disableProfile(profileId2);
@@ -303,16 +302,14 @@ public class ProfileServiceTest {
     try {
       profileService.deleteProfile(myProfile);
       Assert.fail();
-      // TODO: CDAP-14770 make profileconflictexception extend runtimeexception so the exception can be propagated
-    } catch (Exception e) {
+    } catch (ProfileConflictException e) {
       // expected
     }
 
     try {
       profileService.deleteAllProfiles(NamespaceId.DEFAULT);
       Assert.fail();
-    } catch (Exception e) {
-      // TODO: CDAP-14770 make profileconflictexception extend runtimeexception so the exception can be propagated
+    } catch (ProfileConflictException e) {
       // expected and check profile 2 is not getting deleted
       Assert.assertEquals(profile2, profileService.getProfile(myProfile2));
     }
@@ -324,16 +321,14 @@ public class ProfileServiceTest {
     try {
       profileService.deleteProfile(myProfile);
       Assert.fail();
-      // TODO: CDAP-14770 make profileconflictexception extend runtimeexception so the exception can be propagated
-    } catch (Exception e) {
+    } catch (ProfileConflictException e) {
       // expected
     }
 
     try {
       profileService.deleteAllProfiles(NamespaceId.DEFAULT);
       Assert.fail();
-      // TODO: CDAP-14770 make profileconflictexception extend runtimeexception so the exception can be propagated
-    } catch (Exception e) {
+    } catch (ProfileConflictException e) {
       // expected and check profile 2 is not getting deleted
       Assert.assertEquals(profile2, profileService.getProfile(myProfile2));
     }
@@ -356,16 +351,14 @@ public class ProfileServiceTest {
     try {
       profileService.deleteProfile(myProfile);
       Assert.fail();
-      // TODO: CDAP-14770 make profileconflictexception extend runtimeexception so the exception can be propagated
-    } catch (Exception e) {
+    } catch (ProfileConflictException e) {
       // expected
     }
 
     try {
       profileService.deleteAllProfiles(NamespaceId.DEFAULT);
       Assert.fail();
-      // TODO: CDAP-14770 make profileconflictexception extend runtimeexception so the exception can be propagated
-    } catch (Exception e) {
+    } catch (ProfileConflictException e) {
       // expected and check profile 2 is not getting deleted
       Assert.assertEquals(profile2, profileService.getProfile(myProfile2));
     }

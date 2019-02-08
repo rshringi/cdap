@@ -49,6 +49,7 @@ import co.cask.cdap.spi.data.TableNotFoundException;
 import co.cask.cdap.spi.data.transaction.TransactionRunner;
 import co.cask.cdap.spi.data.transaction.TransactionRunners;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
 import org.apache.tephra.RetryStrategies;
 import org.apache.tephra.TransactionSystemClient;
 import org.slf4j.Logger;
@@ -212,14 +213,25 @@ public class ProfileService {
       throw new MethodNotAllowedException(String.format("Profile Native %s cannot be deleted.",
                                                         profileId.getScopedName()));
     }
-    Transactionals.execute(transactional, context -> {
-      ProfileDataset profileDataset = getProfileDataset(context);
-      Profile profile = profileDataset.getProfile(profileId);
-      TransactionRunners.run(transactionRunner, structuredTableContext -> {
-        AppMetadataStore appMetadataStore = AppMetadataStore.create(structuredTableContext);
-        deleteProfile(profileDataset, appMetadataStore, profileId, profile);
+    try {
+      Transactionals.execute(transactional, context -> {
+        ProfileDataset profileDataset = getProfileDataset(context);
+        Profile profile = profileDataset.getProfile(profileId);
+        TransactionRunners.run(transactionRunner, structuredTableContext -> {
+          AppMetadataStore appMetadataStore = AppMetadataStore.create(structuredTableContext);
+          deleteProfile(profileDataset, appMetadataStore, profileId, profile);
+        });
       });
-    }, NotFoundException.class, ProfileConflictException.class);
+    } catch (RuntimeException e) {
+      for (Throwable cause :  Throwables.getCausalChain(e)) {
+        if (cause instanceof NotFoundException) {
+          throw new NotFoundException(cause);
+        } else if (cause instanceof ProfileConflictException) {
+          throw new ProfileConflictException(cause.getMessage(), profileId);
+        }
+      }
+      throw e;
+    }
 
     deleteMetrics(profileId);
   }
@@ -235,18 +247,29 @@ public class ProfileService {
       throw new MethodNotAllowedException("Deleting all system profiles is not allowed.");
     }
     List<ProfileId> deleted = new ArrayList<>();
-    Transactionals.execute(transactional, context -> {
-      ProfileDataset profileDataset = getProfileDataset(context);
-      List<Profile> profiles = profileDataset.getProfiles(namespaceId, false);
-      for (Profile profile : profiles) {
-        ProfileId profileId = namespaceId.profile(profile.getName());
-        TransactionRunners.run(transactionRunner, structuredTableContext -> {
-          AppMetadataStore appMetadataStore = AppMetadataStore.create(structuredTableContext);
-          deleteProfile(profileDataset, appMetadataStore, profileId, profile);
-        });
-        deleted.add(profileId);
+    try {
+      Transactionals.execute(transactional, context -> {
+        ProfileDataset profileDataset = getProfileDataset(context);
+        List<Profile> profiles = profileDataset.getProfiles(namespaceId, false);
+        for (Profile profile : profiles) {
+          ProfileId profileId = namespaceId.profile(profile.getName());
+          TransactionRunners.run(transactionRunner, structuredTableContext -> {
+            AppMetadataStore appMetadataStore = AppMetadataStore.create(structuredTableContext);
+            deleteProfile(profileDataset, appMetadataStore, profileId, profile);
+          });
+          deleted.add(profileId);
+        }
+      });
+    } catch (RuntimeException e) {
+      for (Throwable cause : Throwables.getCausalChain(e)) {
+        if (cause instanceof NotFoundException) {
+          throw new NotFoundException(cause);
+        } else if (cause instanceof ProfileConflictException) {
+          throw new ProfileConflictException(cause.getMessage(), null);
+        }
       }
-    }, ProfileConflictException.class, NotFoundException.class);
+      throw e;
+    }
     // delete the metrics
     for (ProfileId profileId : deleted) {
       deleteMetrics(profileId);
