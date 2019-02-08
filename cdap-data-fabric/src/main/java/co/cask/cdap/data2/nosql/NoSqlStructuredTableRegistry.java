@@ -35,7 +35,6 @@ import co.cask.cdap.spi.data.table.StructuredTableSpecification;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.ImmutableSortedMap;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -45,7 +44,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Optional;
-import java.util.SortedMap;
 import javax.annotation.Nullable;
 
 /**
@@ -101,7 +99,7 @@ public class NoSqlStructuredTableRegistry implements StructuredTableRegistry {
         throw new TableAlreadyExistsException(tableId);
       }
       serialized = Bytes.toBytes(GSON.toJson(specification));
-      table.putBytes(getPut(rowKeyBytes, serialized));
+      table.swap(rowKeyBytes, SCHEMA_COL_BYTES, null, serialized);
     } finally {
       closeRegistryTable(table);
     }
@@ -181,13 +179,5 @@ public class NoSqlStructuredTableRegistry implements StructuredTableRegistry {
     } catch (IOException e) {
       LOG.debug("Got exception while closing table {}", ENTITY_REGISTRY, e);
     }
-  }
-
-  private SortedMap<byte[], ? extends SortedMap<byte[], byte[]>> getPut(byte[] rowkey, byte[] value) {
-    //noinspection ConstantConditions
-    return ImmutableSortedMap.<byte[], SortedMap<byte[], byte[]>>orderedBy(Bytes.BYTES_COMPARATOR)
-      .put(rowkey,
-           ImmutableSortedMap.<byte[], byte[]>orderedBy(Bytes.BYTES_COMPARATOR).put(SCHEMA_COL_BYTES, value).build())
-      .build();
   }
 }
