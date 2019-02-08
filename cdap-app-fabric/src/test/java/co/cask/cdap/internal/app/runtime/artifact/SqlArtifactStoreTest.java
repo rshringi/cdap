@@ -35,11 +35,16 @@ import com.opentable.db.postgres.embedded.EmbeddedPostgres;
 import org.apache.twill.filesystem.LocationFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
 import javax.sql.DataSource;
 
 public class SqlArtifactStoreTest extends ArtifactStoreTest {
+
+  @ClassRule
+  public static final TemporaryFolder TEMP_FOLDER = new TemporaryFolder();
 
   private static EmbeddedPostgres pg;
 
@@ -50,7 +55,7 @@ public class SqlArtifactStoreTest extends ArtifactStoreTest {
     cConf.set(Constants.REQUIREMENTS_DATASET_TYPE_EXCLUDE, Joiner.on(",").join(Table.TYPE, KeyValueTable.TYPE));
     Injector injector = AppFabricTestHelper.getInjector(cConf);
 
-    pg = EmbeddedPostgres.start();
+    pg = EmbeddedPostgres.builder().setDataDirectory(TEMP_FOLDER.newFolder()).setCleanDataDirectory(false).start();
     DataSource dataSource = pg.getPostgresDatabase();
     StructuredTableAdmin structuredTableAdmin =
       new PostgresSqlStructuredTableAdmin(new SqlStructuredTableRegistry(), dataSource);
