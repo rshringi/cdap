@@ -17,6 +17,7 @@
 package co.cask.cdap.internal.app.store;
 
 import co.cask.cdap.data2.sql.PostgresSqlStructuredTableAdmin;
+import co.cask.cdap.data2.sql.SqlStructuredTableRegistry;
 import co.cask.cdap.data2.sql.SqlTransactionRunner;
 import co.cask.cdap.spi.data.StructuredTableAdmin;
 import co.cask.cdap.spi.data.TableAlreadyExistsException;
@@ -39,7 +40,8 @@ public class SqlAppMetadataStoreTest extends AppMetadataStoreTest {
   public static void beforeClass() throws IOException, TableAlreadyExistsException {
     pg = EmbeddedPostgres.start();
     DataSource dataSource = pg.getPostgresDatabase();
-    StructuredTableAdmin structuredTableAdmin = new PostgresSqlStructuredTableAdmin(dataSource);
+    StructuredTableAdmin structuredTableAdmin =
+      new PostgresSqlStructuredTableAdmin(new SqlStructuredTableRegistry(), dataSource);
     transactionRunner = new SqlTransactionRunner(structuredTableAdmin, dataSource);
     StoreDefinition.AppMetadataStore.createTables(structuredTableAdmin);
   }

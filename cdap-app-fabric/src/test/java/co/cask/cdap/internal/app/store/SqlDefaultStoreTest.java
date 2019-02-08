@@ -29,6 +29,7 @@ import co.cask.cdap.security.impersonation.Impersonator;
 import co.cask.cdap.security.spi.authentication.AuthenticationContext;
 import co.cask.cdap.security.spi.authorization.AuthorizationEnforcer;
 import co.cask.cdap.spi.data.StructuredTableAdmin;
+import co.cask.cdap.spi.data.table.StructuredTableRegistry;
 import co.cask.cdap.spi.data.transaction.TransactionRunner;
 import co.cask.cdap.store.DefaultNamespaceStore;
 import co.cask.cdap.store.StoreDefinition;
@@ -50,10 +51,12 @@ public class SqlDefaultStoreTest extends DefaultStoreTest {
     Injector injector = AppFabricTestHelper.getInjector();
     pg = EmbeddedPostgres.start();
     DataSource dataSource = pg.getPostgresDatabase();
+    StructuredTableRegistry structuredTableRegistry = new SqlStructuredTableRegistry();
+    structuredTableRegistry.initialize();
     StructuredTableAdmin structuredTableAdmin =
-      new PostgresSqlStructuredTableAdmin(new SqlStructuredTableRegistry(), dataSource);
+      new PostgresSqlStructuredTableAdmin(structuredTableRegistry, dataSource);
     TransactionRunner transactionRunner = new SqlTransactionRunner(structuredTableAdmin, dataSource);
-    StoreDefinition.createAllTables(structuredTableAdmin, true);
+    StoreDefinition.createAllTables(structuredTableAdmin, structuredTableRegistry, true);
 
 
     store = new DefaultStore(transactionRunner);

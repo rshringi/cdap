@@ -149,8 +149,14 @@ public class AppFabricTestHelper {
       injector.getInstance(DatasetService.class).startAndWait();
       // Register the tables before services will need to use them
       StructuredTableAdmin tableAdmin = injector.getInstance(StructuredTableAdmin.class);
+      StructuredTableRegistry structuredTableRegistry = injector.getInstance(StructuredTableRegistry.class);
       try {
-        StoreDefinition.createAllTables(tableAdmin);
+        structuredTableRegistry.initialize();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      try {
+        StoreDefinition.createAllTables(tableAdmin, structuredTableRegistry);
       } catch (IOException | TableAlreadyExistsException e) {
         throw new RuntimeException("Failed to create the system tables", e);
       }
@@ -182,7 +188,7 @@ public class AppFabricTestHelper {
   /**
    * @return an instance of {@link LocalApplicationManager}
    */
-  public static Manager<AppDeploymentInfo, ApplicationWithPrograms> getLocalManager() {
+  public static Manager<AppDeploymentInfo, ApplicationWithPrograms> getLocalManager() throws IOException {
     ManagerFactory<AppDeploymentInfo, ApplicationWithPrograms> factory =
       getInjector().getInstance(Key.get(
         new TypeLiteral<ManagerFactory<AppDeploymentInfo, ApplicationWithPrograms>>() { }

@@ -52,6 +52,7 @@ import co.cask.cdap.proto.id.ProgramRunId;
 import co.cask.cdap.security.tools.KeyStores;
 import co.cask.cdap.spi.data.StructuredTableAdmin;
 import co.cask.cdap.spi.data.TableAlreadyExistsException;
+import co.cask.cdap.spi.data.table.StructuredTableRegistry;
 import co.cask.cdap.spi.data.transaction.TransactionRunner;
 import co.cask.cdap.store.StoreDefinition;
 import co.cask.common.http.HttpRequestConfig;
@@ -172,7 +173,9 @@ public class RuntimeMonitorTest {
 
     datasetService = injector.getInstance(DatasetService.class);
     datasetService.startAndWait();
-    StoreDefinition.createAllTables(injector.getInstance(StructuredTableAdmin.class));
+    StructuredTableRegistry structuredTableRegistry = injector.getInstance(StructuredTableRegistry.class);
+    structuredTableRegistry.initialize();
+    StoreDefinition.createAllTables(injector.getInstance(StructuredTableAdmin.class), structuredTableRegistry);
 
     runtimeServer = injector.getInstance(RuntimeMonitorServer.class);
     runtimeServer.startAndWait();
