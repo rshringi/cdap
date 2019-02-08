@@ -26,7 +26,6 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.apache.twill.filesystem.Location;
 
-import java.io.IOException;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -46,7 +45,7 @@ public class StaticDatasetFramework extends InMemoryDatasetFramework {
   private final Cache<String, Object> cache = CacheBuilder.newBuilder().build();
 
   public StaticDatasetFramework(DatasetDefinitionRegistryFactory registryFactory,
-                                Map<String, DatasetModule> modules) throws IOException {
+                                Map<String, DatasetModule> modules) {
     super(registryFactory, modules);
   }
 
@@ -84,7 +83,7 @@ public class StaticDatasetFramework extends InMemoryDatasetFramework {
   }
 
   @Override
-  public void addModule(DatasetModuleId moduleId, DatasetModule module) {
+  public void addModule(DatasetModuleId moduleId, DatasetModule module) throws DatasetManagementException {
     throw new UnsupportedOperationException("Cannot change modules of "
                                               + StaticDatasetFramework.class.getSimpleName());
   }

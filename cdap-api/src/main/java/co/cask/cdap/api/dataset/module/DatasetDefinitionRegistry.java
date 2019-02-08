@@ -19,8 +19,6 @@ package co.cask.cdap.api.dataset.module;
 import co.cask.cdap.api.annotation.Beta;
 import co.cask.cdap.api.dataset.DatasetDefinition;
 
-import java.io.IOException;
-
 /**
  * Registry of dataset definitions and other components in a Datasets System.
  *
@@ -52,5 +50,5 @@ public interface DatasetDefinitionRegistry {
    * @param datasetTypeName name of the dataset type
    * @return true if registry contains dataset type of the given name, false otherwise
    */
-  boolean hasType(String datasetTypeName) throws IOException;
+  boolean hasType(String datasetTypeName);
 }

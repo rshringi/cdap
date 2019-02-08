@@ -527,9 +527,15 @@ public class DatasetTypeManager {
     }
 
     @Override
-    public boolean hasType(String datasetTypeName) throws IOException {
-      return registry.hasType(datasetTypeName) ||
-        datasetTypeTable.getType(getNamespaceId().datasetType(datasetTypeName)) != null;
+    public boolean hasType(String datasetTypeName) {
+      boolean hasType;
+      try {
+        hasType = registry.hasType(datasetTypeName) ||
+          datasetTypeTable.getType(getNamespaceId().datasetType(datasetTypeName)) != null;
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return hasType;
     }
   }
 }

@@ -35,7 +35,6 @@ import com.google.inject.multibindings.MapBinder;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 
-import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -100,11 +99,7 @@ public class ServiceStoreModules extends RuntimeModule {
 
     @Override
     public DatasetFramework get() {
-      try {
-        return new InMemoryDatasetFramework(new DefaultDatasetDefinitionRegistryFactory(injector), datasetModules);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      return new InMemoryDatasetFramework(new DefaultDatasetDefinitionRegistryFactory(injector), datasetModules);
     }
   }
 }

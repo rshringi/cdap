@@ -107,14 +107,13 @@ public class InMemoryDatasetFramework implements DatasetFramework {
 
   private AuditPublisher auditPublisher;
 
-  public InMemoryDatasetFramework(DatasetDefinitionRegistryFactory registryFactory) throws IOException {
+  public InMemoryDatasetFramework(DatasetDefinitionRegistryFactory registryFactory) {
     this(registryFactory, new HashMap<String, DatasetModule>());
   }
 
   @Inject
   public InMemoryDatasetFramework(DatasetDefinitionRegistryFactory registryFactory,
-                                  @Constants.Dataset.Manager.DefaultDatasetModules Map<String, DatasetModule> modules)
-    throws IOException {
+                                  @Constants.Dataset.Manager.DefaultDatasetModules Map<String, DatasetModule> modules) {
     this.registryFactory = registryFactory;
     this.nonDefaultTypes = HashMultimap.create();
     this.instances = HashBasedTable.create();
@@ -156,7 +155,7 @@ public class InMemoryDatasetFramework implements DatasetFramework {
   }
 
   @Override
-  public void addModule(DatasetModuleId moduleId, DatasetModule module) throws ModuleConflictException, IOException {
+  public void addModule(DatasetModuleId moduleId, DatasetModule module) throws DatasetManagementException {
     // TODO (CDAP-6297): check if existing modules overlap, or if this removes a type other modules depend on
     writeLock.lock();
     try {
@@ -184,7 +183,7 @@ public class InMemoryDatasetFramework implements DatasetFramework {
 
   @Override
   public void addModule(DatasetModuleId moduleId, DatasetModule module,
-                        Location jarLocation) throws DatasetManagementException, IOException {
+                        Location jarLocation) throws DatasetManagementException {
     // Location is never used to create classloader for in memory dataset framework
     addModule(moduleId, module);
   }
@@ -342,7 +341,7 @@ public class InMemoryDatasetFramework implements DatasetFramework {
 
   @VisibleForTesting
   @Override
-  public boolean hasType(DatasetTypeId datasetTypeId) throws IOException {
+  public boolean hasType(DatasetTypeId datasetTypeId) throws DatasetManagementException {
     return registries.containsKey(datasetTypeId.getParent()) &&
       registries.get(datasetTypeId.getParent()).hasType(datasetTypeId.getEntityName());
   }
@@ -501,7 +500,7 @@ public class InMemoryDatasetFramework implements DatasetFramework {
 
   @Nullable
   @VisibleForTesting
-  DatasetDefinition getDefinitionForType(NamespaceId namespaceId, String datasetType) throws IOException {
+  DatasetDefinition getDefinitionForType(NamespaceId namespaceId, String datasetType) {
     DatasetDefinitionRegistry registry = registries.get(namespaceId);
     if (registry != null && registry.hasType(datasetType)) {
       return registry.get(datasetType);
@@ -542,11 +541,7 @@ public class InMemoryDatasetFramework implements DatasetFramework {
       // and the else block should throw an exception if the dataset type is not found in the current or the system
       // namespace.
       boolean hasType = false;
-      try {
-        delegate.hasType(datasetTypeName);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
+      delegate.hasType(datasetTypeName);
       if (hasType) {
         return delegate.get(datasetTypeName);
       } else if (registries.containsKey(NamespaceId.SYSTEM)) {
@@ -557,7 +552,7 @@ public class InMemoryDatasetFramework implements DatasetFramework {
     }
 
     @Override
-    public boolean hasType(String datasetTypeName) throws IOException {
+    public boolean hasType(String datasetTypeName) {
       return delegate.hasType(datasetTypeName);
     }
   }

@@ -188,7 +188,7 @@ public final class DatasetFrameworkTestUtil extends ExternalResource {
 
   // helper to make this method accessible to DatasetsUtilTest
   public static DatasetDefinition getDatasetDefinition(InMemoryDatasetFramework framework,
-                                                       NamespaceId namespace, String type) throws IOException {
+                                                       NamespaceId namespace, String type) {
     return framework.getDefinitionForType(namespace, type);
   }
 

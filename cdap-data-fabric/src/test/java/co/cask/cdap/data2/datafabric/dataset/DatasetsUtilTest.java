@@ -40,7 +40,6 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.Map;
 
 public class DatasetsUtilTest extends DatasetServiceTestBase {
@@ -51,7 +50,7 @@ public class DatasetsUtilTest extends DatasetServiceTestBase {
   }
 
   @Test
-  public void testFixProperties() throws DatasetManagementException, UnsupportedTypeException, IOException {
+  public void testFixProperties() throws DatasetManagementException, UnsupportedTypeException {
     testFix("fileSet",
             FileSetProperties.builder().setBasePath("/tmp/nn").setDataExternal(true).build());
     testFix(FileSet.class.getName(),
@@ -83,7 +82,7 @@ public class DatasetsUtilTest extends DatasetServiceTestBase {
             DatasetProperties.builder().add(IndexedTable.INDEX_COLUMNS_CONF_KEY, "a,c").build());
   }
 
-  private void testFix(String type, DatasetProperties props) throws IOException {
+  private void testFix(String type, DatasetProperties props) {
     DatasetDefinition def = DatasetFrameworkTestUtil.getDatasetDefinition(
       inMemoryDatasetFramework, NamespaceId.DEFAULT, type);
     Assert.assertNotNull(def);

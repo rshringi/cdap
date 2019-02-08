@@ -43,7 +43,6 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -75,7 +74,7 @@ public class SystemDatasetDefinitionTest {
       "composite", "pedantic", new PedanticDatasetDefinition("pedantic")) {
       @Override
       public Dataset getDataset(DatasetContext datasetContext, DatasetSpecification spec,
-                                Map arguments, ClassLoader classLoader) throws IOException {
+                                Map arguments, ClassLoader classLoader) {
         return null;
       }
     };
@@ -91,7 +90,7 @@ public class SystemDatasetDefinitionTest {
   }
 
   @Test
-  public void testTimeSeriesReconfigure() throws IncompatibleUpdateException, IOException {
+  public void testTimeSeriesReconfigure() throws IncompatibleUpdateException {
     testTimeSeriesReconfigure(registry.get(TimeseriesTable.class.getName()));
     testTimeSeriesReconfigure(registry.get(CounterTimeseriesTable.class.getName()));
   }
@@ -121,7 +120,7 @@ public class SystemDatasetDefinitionTest {
   }
 
   @Test
-  public void testFileSetReconfigure() throws IncompatibleUpdateException, IOException {
+  public void testFileSetReconfigure() throws IncompatibleUpdateException {
     testFileSetReconfigure(registry.get(FileSet.class.getName()));
     testFileSetReconfigure(registry.get(PartitionedFileSet.class.getName()),
                            PartitionedFileSetProperties.builder().setPartitioning(
@@ -194,7 +193,7 @@ public class SystemDatasetDefinitionTest {
   }
 
   @Test
-  public void testPFSReconfigure() throws IncompatibleUpdateException, IOException {
+  public void testPFSReconfigure() throws IncompatibleUpdateException {
     DatasetDefinition pfsDef = registry.get(PartitionedFileSet.class.getName());
     Assert.assertTrue(pfsDef instanceof Reconfigurable);
 
@@ -256,7 +255,7 @@ public class SystemDatasetDefinitionTest {
   }
 
   @Test
-  public void testIndexedTableReconfigure() throws IncompatibleUpdateException, IOException {
+  public void testIndexedTableReconfigure() throws IncompatibleUpdateException {
     DatasetDefinition indexedTableDef = registry.get(IndexedTable.class.getName());
     Assert.assertTrue(indexedTableDef instanceof Reconfigurable);
 
@@ -300,8 +299,7 @@ class DatasetDefinitionRegistryWithDefaultModules extends DefaultDatasetDefiniti
 
   @Inject
   DatasetDefinitionRegistryWithDefaultModules(
-    Injector injector, @Constants.Dataset.Manager.DefaultDatasetModules Map<String, DatasetModule> defaultModules)
-    throws IOException {
+    Injector injector, @Constants.Dataset.Manager.DefaultDatasetModules Map<String, DatasetModule> defaultModules) {
 
     injector.injectMembers(this);
     for (Map.Entry<String, DatasetModule> entry : defaultModules.entrySet()) {

@@ -52,13 +52,13 @@ public class ForwardingDatasetFramework implements DatasetFramework {
   }
 
   @Override
-  public void addModule(DatasetModuleId moduleId, DatasetModule module) throws DatasetManagementException, IOException {
+  public void addModule(DatasetModuleId moduleId, DatasetModule module) throws DatasetManagementException {
     delegate.addModule(moduleId, module);
   }
 
   @Override
   public void addModule(DatasetModuleId moduleId, DatasetModule module, Location jarLocation)
-    throws DatasetManagementException, IOException {
+    throws DatasetManagementException {
     delegate.addModule(moduleId, module, jarLocation);
   }
 
@@ -109,7 +109,7 @@ public class ForwardingDatasetFramework implements DatasetFramework {
   }
 
   @Override
-  public boolean hasType(DatasetTypeId datasetTypeId) throws DatasetManagementException, IOException {
+  public boolean hasType(DatasetTypeId datasetTypeId) throws DatasetManagementException {
     return delegate.hasType(datasetTypeId);
   }
 
