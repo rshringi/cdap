@@ -57,6 +57,7 @@ public class DefaultMetadataStoreTest extends AbstractMetadataStoreTest {
       new TransactionInMemoryModule(),
       new SystemDatasetRuntimeModule().getInMemoryModules(),
       new NamespaceAdminTestModule(),
+      new StorageModule(),
       new AuthorizationTestModule(),
       new AuthorizationEnforcementModule().getInMemoryModules(),
       new AuthenticationContextModules().getMasterModule(),

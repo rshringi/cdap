@@ -62,6 +62,7 @@ public class StorageProviderMetadataStoreTest extends AbstractMetadataStoreTest 
       new SystemDatasetRuntimeModule().getInMemoryModules(),
       new NamespaceAdminTestModule(),
       new AuthorizationTestModule(),
+      new StorageModule(),
       new AuthorizationEnforcementModule().getInMemoryModules(),
       new AuthenticationContextModules().getMasterModule(),
       new AuditTestModule()
