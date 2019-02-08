@@ -73,11 +73,7 @@ import co.cask.cdap.security.auth.context.AuthenticationContextModules;
 import co.cask.cdap.security.authorization.AuthorizationEnforcementModule;
 import co.cask.cdap.security.guice.SecureStoreServerModule;
 import co.cask.cdap.security.impersonation.SecurityUtil;
-<<<<<<< HEAD
-import co.cask.cdap.store.guice.NamespaceStoreModule;
-=======
 import co.cask.cdap.store.DefaultOwnerStore;
->>>>>>> develop
 import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
