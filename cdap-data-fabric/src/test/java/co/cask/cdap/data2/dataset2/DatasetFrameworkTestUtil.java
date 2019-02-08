@@ -117,7 +117,7 @@ public final class DatasetFrameworkTestUtil extends ExternalResource {
     return framework;
   }
 
-  public void addModule(DatasetModuleId moduleId, DatasetModule module) throws DatasetManagementException {
+  public void addModule(DatasetModuleId moduleId, DatasetModule module) throws DatasetManagementException, IOException {
     framework.addModule(moduleId, module);
   }
 
@@ -188,7 +188,7 @@ public final class DatasetFrameworkTestUtil extends ExternalResource {
 
   // helper to make this method accessible to DatasetsUtilTest
   public static DatasetDefinition getDatasetDefinition(InMemoryDatasetFramework framework,
-                                                       NamespaceId namespace, String type) {
+                                                       NamespaceId namespace, String type) throws IOException {
     return framework.getDefinitionForType(namespace, type);
   }
 

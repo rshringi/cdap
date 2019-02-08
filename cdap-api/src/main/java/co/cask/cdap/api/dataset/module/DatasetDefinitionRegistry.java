@@ -19,6 +19,8 @@ package co.cask.cdap.api.dataset.module;
 import co.cask.cdap.api.annotation.Beta;
 import co.cask.cdap.api.dataset.DatasetDefinition;
 
+import java.io.IOException;
+
 /**
  * Registry of dataset definitions and other components in a Datasets System.
  *
@@ -38,9 +40,9 @@ public interface DatasetDefinitionRegistry {
 
   /**
    * Gets {@link DatasetDefinition} previously added to the registry.
-   * @param datasetTypeName dataset type name, should be same as
-   *                        {@link co.cask.cdap.api.dataset.DatasetDefinition#getName()}
    * @param <T> type of the returned {@link DatasetDefinition}
+   * @param datasetTypeName dataset type name, should be same as
+   *                        {@link DatasetDefinition#getName()}
    * @return instance of {@link DatasetDefinition}
    * @throws IllegalArgumentException if registry does not contain dataset type of a given name
    */
@@ -50,5 +52,5 @@ public interface DatasetDefinitionRegistry {
    * @param datasetTypeName name of the dataset type
    * @return true if registry contains dataset type of the given name, false otherwise
    */
-  boolean hasType(String datasetTypeName);
+  boolean hasType(String datasetTypeName) throws IOException;
 }

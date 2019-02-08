@@ -26,7 +26,7 @@ import java.io.IOException;
 public class InMemoryDatasetFrameworkTest extends AbstractDatasetFrameworkTest {
 
   @Override
-  protected DatasetFramework getFramework() throws DatasetManagementException {
+  protected DatasetFramework getFramework() throws DatasetManagementException, IOException {
     InMemoryDatasetFramework framework = new InMemoryDatasetFramework(registryFactory, DEFAULT_MODULES);
     framework.setAuditPublisher(inMemoryAuditPublisher);
     try {

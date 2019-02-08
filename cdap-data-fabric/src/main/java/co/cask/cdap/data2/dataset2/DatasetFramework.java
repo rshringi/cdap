@@ -82,7 +82,7 @@ public interface DatasetFramework {
    * @throws DatasetManagementException in case of problems
    * @throws ServiceUnavailableException when the dataset service is not running
    */
-  void addModule(DatasetModuleId moduleId, DatasetModule module) throws DatasetManagementException;
+  void addModule(DatasetModuleId moduleId, DatasetModule module) throws DatasetManagementException, IOException;
 
   /**
    * Adds dataset types by adding dataset module to the system with a jar location containing all dataset classes
@@ -97,7 +97,7 @@ public interface DatasetFramework {
    * @throws ServiceUnavailableException when the dataset service is not running
    */
   void addModule(DatasetModuleId moduleId, DatasetModule module,
-                 Location jarLocation) throws DatasetManagementException;
+                 Location jarLocation) throws DatasetManagementException, IOException;
 
   /**
    * Deletes dataset module and its types from the system.
@@ -224,7 +224,7 @@ public interface DatasetFramework {
    * @throws DatasetManagementException
    * @throws ServiceUnavailableException when the dataset service is not running
    */
-  default boolean hasSystemType(String typeName) throws DatasetManagementException {
+  default boolean hasSystemType(String typeName) throws DatasetManagementException, IOException {
     return hasType(NamespaceId.SYSTEM.datasetType(typeName));
   }
 
@@ -236,7 +236,7 @@ public interface DatasetFramework {
    * @throws ServiceUnavailableException when the dataset service is not running
    */
   @VisibleForTesting
-  boolean hasType(DatasetTypeId datasetTypeId) throws DatasetManagementException;
+  boolean hasType(DatasetTypeId datasetTypeId) throws DatasetManagementException, IOException;
 
   /**
    * @return the meta data for a dataset type or null if it does not exist.

@@ -322,7 +322,7 @@ public class RemoteDatasetFramework implements DatasetFramework {
    */
   public <T extends DatasetType> T getDatasetType(DatasetTypeMeta implementationInfo,
                                                   ClassLoader classLoader,
-                                                  DatasetClassLoaderProvider classLoaderProvider) {
+                                                  DatasetClassLoaderProvider classLoaderProvider) throws IOException {
 
     return getType(implementationInfo, classLoader, classLoaderProvider);
   }
@@ -343,7 +343,7 @@ public class RemoteDatasetFramework implements DatasetFramework {
    */
   private <T extends DatasetType> T getType(DatasetTypeMeta datasetTypeMeta,
                                            @Nullable ClassLoader classLoader,
-                                           DatasetClassLoaderProvider classLoaderProvider) {
+                                           DatasetClassLoaderProvider classLoaderProvider) throws IOException {
 
     if (classLoader == null) {
       classLoader = Objects.firstNonNull(Thread.currentThread().getContextClassLoader(), getClass().getClassLoader());

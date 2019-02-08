@@ -91,7 +91,7 @@ public class SystemDatasetDefinitionTest {
   }
 
   @Test
-  public void testTimeSeriesReconfigure() throws IncompatibleUpdateException {
+  public void testTimeSeriesReconfigure() throws IncompatibleUpdateException, IOException {
     testTimeSeriesReconfigure(registry.get(TimeseriesTable.class.getName()));
     testTimeSeriesReconfigure(registry.get(CounterTimeseriesTable.class.getName()));
   }
@@ -121,7 +121,7 @@ public class SystemDatasetDefinitionTest {
   }
 
   @Test
-  public void testFileSetReconfigure() throws IncompatibleUpdateException {
+  public void testFileSetReconfigure() throws IncompatibleUpdateException, IOException {
     testFileSetReconfigure(registry.get(FileSet.class.getName()));
     testFileSetReconfigure(registry.get(PartitionedFileSet.class.getName()),
                            PartitionedFileSetProperties.builder().setPartitioning(
@@ -194,7 +194,7 @@ public class SystemDatasetDefinitionTest {
   }
 
   @Test
-  public void testPFSReconfigure() throws IncompatibleUpdateException {
+  public void testPFSReconfigure() throws IncompatibleUpdateException, IOException {
     DatasetDefinition pfsDef = registry.get(PartitionedFileSet.class.getName());
     Assert.assertTrue(pfsDef instanceof Reconfigurable);
 
@@ -256,7 +256,7 @@ public class SystemDatasetDefinitionTest {
   }
 
   @Test
-  public void testIndexedTableReconfigure() throws IncompatibleUpdateException {
+  public void testIndexedTableReconfigure() throws IncompatibleUpdateException, IOException {
     DatasetDefinition indexedTableDef = registry.get(IndexedTable.class.getName());
     Assert.assertTrue(indexedTableDef instanceof Reconfigurable);
 
@@ -300,7 +300,8 @@ class DatasetDefinitionRegistryWithDefaultModules extends DefaultDatasetDefiniti
 
   @Inject
   DatasetDefinitionRegistryWithDefaultModules(
-    Injector injector, @Constants.Dataset.Manager.DefaultDatasetModules Map<String, DatasetModule> defaultModules) {
+    Injector injector, @Constants.Dataset.Manager.DefaultDatasetModules Map<String, DatasetModule> defaultModules)
+    throws IOException {
 
     injector.injectMembers(this);
     for (Map.Entry<String, DatasetModule> entry : defaultModules.entrySet()) {

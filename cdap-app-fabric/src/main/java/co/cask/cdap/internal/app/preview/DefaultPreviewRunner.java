@@ -257,12 +257,12 @@ public class DefaultPreviewRunner extends AbstractIdleService implements Preview
 
   @Override
   protected void startUp() throws Exception {
+    // TODO: CDAP-14838 Ensure preivew has it's own copy of the schema mapping.
+    StoreDefinition.createAllTables(structuredTableAdmin, structuredTableRegistry, true);
     if (messagingService instanceof Service) {
       ((Service) messagingService).startAndWait();
     }
     datasetService.startAndWait();
-    // TODO: CDAP-14838 Ensure preivew has it's own copy of the schema mapping.
-    StoreDefinition.createAllTables(structuredTableAdmin, structuredTableRegistry, true);
 
     // It is recommended to initialize log appender after datasetService is started,
     // since log appender instantiates a dataset.

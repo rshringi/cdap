@@ -22,6 +22,7 @@ import co.cask.cdap.common.lang.ClassLoaders;
 import co.cask.cdap.data2.dataset2.module.lib.DatasetModules;
 import com.google.common.base.Objects;
 
+import java.io.IOException;
 import javax.annotation.Nullable;
 
 /**
@@ -31,7 +32,7 @@ public final class DatasetDefinitionRegistries {
 
   public static void register(String moduleClassName,
                               @Nullable ClassLoader classLoader, DatasetDefinitionRegistry registry)
-    throws ClassNotFoundException, IllegalAccessException, InstantiationException, TypeConflictException {
+    throws ClassNotFoundException, IllegalAccessException, InstantiationException, TypeConflictException, IOException {
 
     ClassLoader systemClassLoader = DatasetDefinitionRegistries.class.getClassLoader();
 

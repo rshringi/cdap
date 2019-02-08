@@ -19,7 +19,6 @@ package co.cask.cdap.data.runtime;
 import co.cask.cdap.api.dataset.module.DatasetModule;
 import co.cask.cdap.common.conf.Constants;
 import co.cask.cdap.common.runtime.RuntimeModule;
-import co.cask.cdap.data2.datafabric.dataset.DatasetMetaTableUtil;
 import co.cask.cdap.data2.datafabric.dataset.service.AuthorizationDatasetTypeService;
 import co.cask.cdap.data2.datafabric.dataset.service.DatasetService;
 import co.cask.cdap.data2.datafabric.dataset.service.DatasetTypeService;
@@ -220,11 +219,14 @@ public class DataSetServiceModules extends RuntimeModule {
     public DatasetFramework get() {
       Map<String, DatasetModule> modulesMap = ImmutableMap.<String, DatasetModule>builder()
         .putAll(defaultModules)
-        .putAll(DatasetMetaTableUtil.getModules())
         .build();
       // NOTE: it is fine to use in-memory dataset manager for direct access to dataset MDS even in distributed mode
       //       as long as the data is durably persisted
-      return new StaticDatasetFramework(registryFactory, modulesMap);
+      try {
+        return new StaticDatasetFramework(registryFactory, modulesMap);
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 }

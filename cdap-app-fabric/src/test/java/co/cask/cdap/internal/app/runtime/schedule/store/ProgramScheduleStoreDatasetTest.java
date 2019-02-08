@@ -44,6 +44,7 @@ import org.apache.tephra.TransactionSystemClient;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -72,7 +73,7 @@ public class ProgramScheduleStoreDatasetTest extends AppFabricTestBase {
   private static final DatasetId DS2_ID = NS1_ID.dataset("pfs2");
 
   @Test
-  public void checkDatasetType() throws DatasetManagementException {
+  public void checkDatasetType() throws DatasetManagementException, IOException {
     DatasetFramework dsFramework = getInjector().getInstance(DatasetFramework.class);
     Assert.assertTrue(dsFramework.hasType(NamespaceId.SYSTEM.datasetType(Schedulers.STORE_TYPE_NAME)));
   }

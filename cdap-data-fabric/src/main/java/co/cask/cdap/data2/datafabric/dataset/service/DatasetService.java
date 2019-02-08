@@ -24,6 +24,10 @@ import co.cask.cdap.common.http.CommonNettyHttpServiceBuilder;
 import co.cask.cdap.common.metrics.MetricsReporterHook;
 import co.cask.cdap.data2.datafabric.dataset.service.executor.DatasetOpExecutor;
 import co.cask.cdap.data2.metrics.DatasetMetricsReporter;
+import co.cask.cdap.spi.data.StructuredTableAdmin;
+import co.cask.cdap.spi.data.TableAlreadyExistsException;
+import co.cask.cdap.spi.data.table.StructuredTableRegistry;
+import co.cask.cdap.store.StoreDefinition;
 import co.cask.http.ChannelPipelineModifier;
 import co.cask.http.NettyHttpService;
 import com.google.common.base.Objects;
@@ -45,6 +49,7 @@ import org.apache.twill.discovery.ServiceDiscovered;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
@@ -64,6 +69,8 @@ public class DatasetService extends AbstractExecutionThreadService {
   private final Set<DatasetMetricsReporter> metricReporters;
   private final DatasetTypeService typeService;
   private final CConfiguration cConf;
+  private final StructuredTableAdmin structuredTableAdmin;
+  private final StructuredTableRegistry structuredTableRegistry;
 
   private Cancellable cancelDiscovery;
   private Cancellable opExecutorServiceWatch;
@@ -78,7 +85,9 @@ public class DatasetService extends AbstractExecutionThreadService {
                         DatasetOpExecutor opExecutorClient,
                         Set<DatasetMetricsReporter> metricReporters,
                         DatasetTypeService datasetTypeService,
-                        DatasetInstanceService datasetInstanceService) {
+                        DatasetInstanceService datasetInstanceService,
+                        StructuredTableAdmin structuredTableAdmin,
+                        StructuredTableRegistry structuredTableRegistry) {
     this.cConf = cConf;
     this.typeService = datasetTypeService;
     DatasetTypeHandler datasetTypeHandler = new DatasetTypeHandler(datasetTypeService);
@@ -116,12 +125,14 @@ public class DatasetService extends AbstractExecutionThreadService {
     this.discoveryServiceClient = discoveryServiceClient;
     this.opExecutorClient = opExecutorClient;
     this.metricReporters = metricReporters;
+    this.structuredTableAdmin = structuredTableAdmin;
+    this.structuredTableRegistry = structuredTableRegistry;
   }
 
   @Override
   protected void startUp() throws Exception {
     LOG.info("Starting DatasetService...");
-
+    StoreDefinition.createAllTables(structuredTableAdmin, structuredTableRegistry);
     typeService.startAndWait();
     opExecutorClient.startAndWait();
     httpService.start();

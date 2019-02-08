@@ -107,7 +107,7 @@ import javax.annotation.Nullable;
 @RunWith(TestRunner.class)
 public abstract class AbstractDatasetFrameworkTest {
 
-  protected abstract DatasetFramework getFramework() throws DatasetManagementException;
+  protected abstract DatasetFramework getFramework() throws DatasetManagementException, IOException;
 
   protected static final Map<String, DatasetModule> DEFAULT_MODULES;
   static {
